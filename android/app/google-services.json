@@ -1,0 +1,49 @@
+{
+  "project_info": {
+    "project_number": "113162025035",
+    "firebase_url": "https://dc-prototype-1-117ab-default-rtdb.firebaseio.com",
+    "project_id": "dc-prototype-1-117ab",
+    "storage_bucket": "dc-prototype-1-117ab.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:113162025035:android:a69f684e0c5f1bc615f5ce",
+        "android_client_info": {
+          "package_name": "com.example.dc_multiplatforms"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBtV2mFyYHyv5BzYZ4ARw77uuFOUFfDBLc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:113162025035:android:e4ef3c9d0e8be3f615f5ce",
+        "android_client_info": {
+          "package_name": "com.example.iseng"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBtV2mFyYHyv5BzYZ4ARw77uuFOUFfDBLc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
