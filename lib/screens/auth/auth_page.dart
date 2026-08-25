@@ -6,7 +6,6 @@ import '../../core/theme.dart';
 import '../../models/user.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
-import '../../providers/auth_provider.dart' show otpStatusProvider, otpErrorProvider, OtpStatus;
 import '../../widgets/logo_widget.dart' show AppLogo, normalizeIndonesianPhone, PhoneInputFormatter;
 
 class AuthPage extends ConsumerStatefulWidget {
@@ -18,7 +17,6 @@ class AuthPage extends ConsumerStatefulWidget {
 
 class _AuthPageState extends ConsumerState<AuthPage> {
   final _phoneCtrl = TextEditingController();
-  final _codeCtrl = TextEditingController();
   final _usernameCtrl = TextEditingController();
   final _nameCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
@@ -27,7 +25,6 @@ class _AuthPageState extends ConsumerState<AuthPage> {
   Jurusan _selectedJurusan = Jurusan.rpl;
   Kelas _selectedKelas = Kelas.x;
 
-  bool _codeSent = false;
   bool _isRegistering = false; // true = registrasi, false = login
   bool _isLoading = false;
   String? _errorMessage;
@@ -40,7 +37,6 @@ class _AuthPageState extends ConsumerState<AuthPage> {
   @override
   void dispose() {
     _phoneCtrl.dispose();
-    _codeCtrl.dispose();
     _usernameCtrl.dispose();
     _nameCtrl.dispose();
     _passwordCtrl.dispose();
@@ -48,97 +44,39 @@ class _AuthPageState extends ConsumerState<AuthPage> {
     super.dispose();
   }
 
-  Future<void> _sendOtp() async {
-    // Mark phone as touched so field-level error shows after submit attempt
-    setState(() => _touchedFields.add('phone'));
+  /// Register directly — no OTP, just create account
+  Future<void> _register() async {
+    // Mark all fields as touched
+    setState(() => _touchedFields.addAll([
+      'phone', 'username', 'name', 'password', 'confirmPassword',
+    ]));
 
-    final raw = _phoneCtrl.text.trim();
-    if (raw.isEmpty) {
+    // Validate
+    final rawPhone = _phoneCtrl.text.trim();
+    if (rawPhone.isEmpty) {
       setState(() => _errorMessage = 'Nomor telepon tidak boleh kosong');
       return;
     }
-
-    final normalized = normalizeIndonesianPhone(raw);
+    final normalized = normalizeIndonesianPhone(rawPhone);
     if (normalized == null) {
       setState(() => _errorMessage = 'Format nomor telepon tidak valid');
       return;
     }
-
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    // Reset OTP state
-    ref.read(otpStatusProvider.notifier).state = OtpStatus.sending;
-    ref.read(otpErrorProvider.notifier).state = null;
-
-    // sendOtp is callback-based, fire and observe state
-    ref.read(authServiceProvider).sendOtp(normalized);
-
-    // Poll for status changes (verificationFailed / codeSent callbacks)
-    // Max wait 30 seconds, check every 500ms
-    for (var i = 0; i < 60; i++) {
-      await Future.delayed(const Duration(milliseconds: 500));
-      if (!mounted) return;
-
-      final status = ref.read(otpStatusProvider);
-      final error = ref.read(otpErrorProvider);
-
-      if (status == OtpStatus.sent) {
-        setState(() {
-          _codeSent = true;
-          _isLoading = false;
-        });
-        return;
-      }
-      if (status == OtpStatus.error) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = error ?? 'Gagal mengirim OTP.';
-        });
-        return;
-      }
-    }
-
-    // Timeout
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = 'Timeout — pastikan nomor valid dan jaringan stabil.';
-      });
-    }
-  }
-
-  Future<void> _verifyOtp() async {
-    final sms = _codeCtrl.text.trim();
-    if (sms.isEmpty) {
-      setState(() => _errorMessage = 'Kode OTP tidak boleh kosong');
+    if (_usernameCtrl.text.trim().isEmpty) {
+      setState(() => _errorMessage = 'Username tidak boleh kosong');
       return;
     }
-    if (sms.length != 6) {
-      setState(() => _errorMessage = 'Kode OTP harus 6 digit');
+    if (_nameCtrl.text.trim().isEmpty) {
+      setState(() => _errorMessage = 'Nama lengkap tidak boleh kosong');
       return;
     }
-
-    // Validate registration form
-    if (_isRegistering) {
-      if (_usernameCtrl.text.trim().isEmpty) {
-        setState(() => _errorMessage = 'Username tidak boleh kosong');
-        return;
-      }
-      if (_nameCtrl.text.trim().isEmpty) {
-        setState(() => _errorMessage = 'Nama lengkap tidak boleh kosong');
-        return;
-      }
-      if (_passwordCtrl.text.length < 6) {
-        setState(() => _errorMessage = 'Password minimal 6 karakter');
-        return;
-      }
-      if (_passwordCtrl.text != _confirmPasswordCtrl.text) {
-        setState(() => _errorMessage = 'Konfirmasi password tidak cocok');
-        return;
-      }
+    if (_passwordCtrl.text.length < 6) {
+      setState(() => _errorMessage = 'Password minimal 6 karakter');
+      return;
+    }
+    if (_passwordCtrl.text != _confirmPasswordCtrl.text) {
+      setState(() => _errorMessage = 'Konfirmasi password tidak cocok');
+      return;
     }
 
     setState(() {
@@ -147,42 +85,39 @@ class _AuthPageState extends ConsumerState<AuthPage> {
     });
 
     try {
-      final user = await ref.read(authServiceProvider).verifyOtp(sms);
-      if (user == null) {
-        throw Exception('Verifikasi gagal. Coba lagi.');
+      final db = ref.read(databaseServiceProvider);
+      final authService = ref.read(authServiceProvider);
+
+      // Check if username is taken
+      final isTaken = await db.isUsernameTaken(_usernameCtrl.text.trim());
+      if (isTaken) {
+        throw Exception('Username sudah digunakan');
       }
 
-      if (_isRegistering) {
-        // Check if username is taken
-        final db = ref.read(databaseServiceProvider);
-        final isTaken = await db.isUsernameTaken(_usernameCtrl.text.trim());
-        if (isTaken) {
-          throw Exception('Username sudah digunakan');
-        }
-
-        // Save the normalized phone number
-        final normalizedPhone =
-            normalizeIndonesianPhone(_phoneCtrl.text.trim()) ?? _phoneCtrl.text.trim();
-        final uid = user.uid;
-
-        // Register user data in Realtime Database
-        await ref.read(authServiceProvider).registerUser(
-              uid: uid,
-              username: _usernameCtrl.text.trim(),
-              phone: normalizedPhone,
-              name: _nameCtrl.text.trim(),
-              jurusan: _selectedJurusan,
-              kelas: _selectedKelas,
-            );
-
-        // Create Firebase email account so user can login with username/password
-        // Sign out from phone auth first, then create email account, then sign back in
-        await ref.read(authServiceProvider).signOut();
-        await ref.read(authServiceProvider).createUserWithEmailAndPassword(
-              '$uid@catering.app',
-              _passwordCtrl.text,
-            );
+      // Create Firebase email account (uid@catering.app + password)
+      final tempEmail = '${DateTime.now().millisecondsSinceEpoch}@catering.app';
+      final user = await authService.createUserWithEmailAndPassword(
+        tempEmail,
+        _passwordCtrl.text,
+      );
+      final uid = user?.uid;
+      if (uid == null) {
+        throw Exception('Gagal membuat akun');
       }
+
+      // Update the email to use uid-based format
+      // ignore: deprecated_member_use
+      await user!.updateEmail('$uid@catering.app');
+
+      // Register user data in Realtime Database
+      await authService.registerUser(
+        uid: uid,
+        username: _usernameCtrl.text.trim(),
+        phone: normalized,
+        name: _nameCtrl.text.trim(),
+        jurusan: _selectedJurusan,
+        kelas: _selectedKelas,
+      );
 
       if (mounted) {
         context.go('/home');
@@ -196,6 +131,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
     }
   }
 
+  /// Login with phone + password
   Future<void> _loginWithPassword() async {
     final rawPhone = _phoneCtrl.text.trim();
     final password = _passwordCtrl.text;
@@ -247,11 +183,6 @@ class _AuthPageState extends ConsumerState<AuthPage> {
         if (raw.isEmpty) return 'Nomor telepon tidak boleh kosong';
         if (normalizeIndonesianPhone(raw) == null) return 'Format nomor telepon tidak valid';
         return null;
-      case 'code':
-        final code = _codeCtrl.text.trim();
-        if (code.isEmpty) return 'Kode OTP tidak boleh kosong';
-        if (code.length != 6) return 'Kode OTP harus 6 digit';
-        return null;
       case 'username':
         if (_usernameCtrl.text.trim().isEmpty) return 'Username tidak boleh kosong';
         return null;
@@ -283,10 +214,8 @@ class _AuthPageState extends ConsumerState<AuthPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Logo at top - matches Figma (Positioned left:137, top:-76, 110x110 circle)
                 const AppLogo(size: 90),
                 const SizedBox(height: 24),
-                // Welcome text - matches Figma: WELCOME, Playfair Display, 28px, w700, #740028
                 Text(
                   'WELCOME',
                   textAlign: TextAlign.center,
@@ -294,13 +223,13 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                 ),
                 const SizedBox(height: 44),
 
-                // Login/Register toggle tabs - matches Figma exactly
+                // Login/Register toggle tabs
                 _buildTabSwitcher(),
                 const SizedBox(height: 48),
 
                 // Form fields
-                if (!_codeSent && !_isRegistering) ...[
-                  // Login form - Phone + Password
+                if (!_isRegistering) ...[
+                  // ── LOGIN ──
                   _buildInputField(
                     controller: _phoneCtrl,
                     label: 'Nomor Telepon',
@@ -327,7 +256,6 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                     fieldKey: 'password',
                   ),
                   const SizedBox(height: 12),
-                  // Forgot password - right aligned
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
@@ -349,8 +277,8 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                       child: const Text('Lupa password?'),
                     ),
                   ),
-                ] else if (!_codeSent && _isRegistering) ...[
-                  // Register step 1 - Phone number (auto +62 prefix, formatted display)
+                ] else ...[
+                  // ── REGISTER ──
                   _buildInputField(
                     controller: _phoneCtrl,
                     label: 'Nomor Telepon',
@@ -361,26 +289,6 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                     digitsOnly: true,
                     formatters: [PhoneInputFormatter()],
                     leadingText: '+62 ',
-                    onChanged: (_) {
-                      // Clear stale global error while typing once format is fixable
-                      if (_errorMessage != null &&
-                          normalizeIndonesianPhone(_phoneCtrl.text) != null) {
-                        setState(() => _errorMessage = null);
-                      }
-                    },
-                    onFieldSubmitted: (value) => _sendOtp(),
-                  ),
-                ] else if (_codeSent && _isRegistering) ...[
-                  // Register step 2 - OTP + details
-                  _buildInputField(
-                    controller: _codeCtrl,
-                    label: 'Kode OTP',
-                    hintText: 'Masukkan kode 6 digit',
-                    keyboardType: TextInputType.number,
-                    prefixIcon: Icons.sms_outlined,
-                    maxLength: 6,
-                    fieldKey: 'code',
-                    onFieldSubmitted: (value) => _verifyOtp(),
                   ),
                   const SizedBox(height: 16),
                   _buildInputField(
@@ -401,7 +309,6 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                     fieldKey: 'name',
                   ),
                   const SizedBox(height: 16),
-                  // Jurusan + Kelas side-by-side (falls back to stacked on narrow screens)
                   LayoutBuilder(
                     builder: (context, constraints) {
                       const gap = 12.0;
@@ -525,16 +432,14 @@ class _AuthPageState extends ConsumerState<AuthPage> {
 
                 const SizedBox(height: 24),
 
-                // Submit button - matches Figma Sign In button
+                // Submit button
                 SizedBox(
                   width: double.infinity,
                   height: 52,
                   child: FilledButton(
                     onPressed: _isLoading
                         ? null
-                        : (_codeSent
-                            ? _verifyOtp
-                            : (_isRegistering ? _sendOtp : _loginWithPassword)),
+                        : (_isRegistering ? _register : _loginWithPassword),
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
@@ -543,14 +448,8 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      textStyle: _isRegistering && !_codeSent
-                          ? AppTextStyles.buttonSignIn
-                          : AppTextStyles.button.copyWith(
-                              fontFamily: 'Montserrat',
-                              fontWeight: FontWeight.w700,
-                            ),
+                      textStyle: AppTextStyles.buttonSignIn,
                     ).copyWith(
-                      // Custom shadow matching Figma
                       backgroundColor: WidgetStateProperty.all(AppColors.primary),
                       shadowColor: WidgetStateProperty.all(const Color(0x269E013A)),
                       elevation: WidgetStateProperty.all(0),
@@ -564,11 +463,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                               valueColor: AlwaysStoppedAnimation(Colors.white),
                             ),
                           )
-                        : Text(
-                            _codeSent
-                                ? 'Verifikasi & Lanjut'
-                                : (_isRegistering ? 'Kirim OTP' : 'Sign In'),
-                          ),
+                        : Text(_isRegistering ? 'Buat Akun' : 'Sign In'),
                   ),
                 ),
 
@@ -584,12 +479,10 @@ class _AuthPageState extends ConsumerState<AuthPage> {
   List<Widget> _buildFieldErrors() {
     final fields = <String>[];
 
-    if (!_codeSent && !_isRegistering) {
-      fields.addAll(['username', 'password']);
-    } else if (!_codeSent && _isRegistering) {
-      fields.add('phone');
-    } else if (_codeSent && _isRegistering) {
-      fields.addAll(['code', 'username', 'name', 'password', 'confirmPassword']);
+    if (!_isRegistering) {
+      fields.addAll(['phone', 'password']);
+    } else {
+      fields.addAll(['phone', 'username', 'name', 'password', 'confirmPassword']);
     }
 
     return fields.map((field) {
@@ -624,15 +517,12 @@ class _AuthPageState extends ConsumerState<AuthPage> {
     }).toList();
   }
 
-  // Tab switcher matching Figma design exactly.
-  // Active tab: filled primary + white bold text + card shadow.
-  // Inactive tab: transparent + dark text, no shadow.
   Widget _buildTabSwitcher() {
     return Container(
       width: double.infinity,
       height: 52,
       decoration: ShapeDecoration(
-        color: AppColors.secondary, // #FFF0CA
+        color: AppColors.secondary,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
         ),
@@ -640,7 +530,6 @@ class _AuthPageState extends ConsumerState<AuthPage> {
       ),
       child: Stack(
         children: [
-          // Sliding pill behind the ACTIVE tab
           AnimatedAlign(
             alignment: _isRegistering ? Alignment.centerRight : Alignment.centerLeft,
             duration: const Duration(milliseconds: 200),
@@ -671,14 +560,12 @@ class _AuthPageState extends ConsumerState<AuthPage> {
               ),
             ),
           ),
-          // Tab labels on top of the pill
           Row(
             children: [
               Expanded(child: Center(child: _buildTabLabel('Login', isActive: !_isRegistering))),
               Expanded(child: Center(child: _buildTabLabel('Register', isActive: _isRegistering))),
             ],
           ),
-          // Tap targets on top of everything
           Row(
             children: [
               Expanded(
@@ -723,14 +610,13 @@ class _AuthPageState extends ConsumerState<AuthPage> {
     );
   }
 
-  // Input field matching Figma design: height 48, border #E1BEC1, radius 12
   Widget _buildInputField({
     required TextEditingController controller,
     required String label,
     required String hintText,
     IconData? prefixIcon,
     IconData? suffixIcon,
-    String? leadingText, // static text rendered inside field (e.g. '+62')
+    String? leadingText,
     bool digitsOnly = false,
     List<TextInputFormatter>? formatters,
     TextInputType? keyboardType,
@@ -746,20 +632,18 @@ class _AuthPageState extends ConsumerState<AuthPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Label (floating label style like Figma)
         Padding(
           padding: const EdgeInsets.only(left: 8, top: 0, bottom: 0),
           child: Text(
             label,
             style: AppTextStyles.inputHint.copyWith(
-              color: hasError ? AppColors.error : AppColors.textSecondary, // #594043
+              color: hasError ? AppColors.error : AppColors.textSecondary,
               fontSize: 16,
               height: 1.5,
             ),
           ),
         ),
         const SizedBox(height: 8),
-        // Input container - matches Figma: 384x48, border 1px #E1BEC1, radius 12
         Container(
           width: double.infinity,
           height: 48,
@@ -771,12 +655,11 @@ class _AuthPageState extends ConsumerState<AuthPage> {
               side: BorderSide(
                 color: hasError ? AppColors.error : AppColors.border,
                 width: 1,
-              ), // #E1BEC1
+              ),
             ),
           ),
           child: Stack(
             children: [
-              // TextField inside
               TextField(
                 controller: controller,
                 keyboardType: keyboardType,
@@ -797,8 +680,6 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                   hintStyle: AppTextStyles.inputHint.copyWith(
                     color: hasError ? AppColors.error.withValues(alpha: 0.5) : AppColors.textSecondary,
                   ),
-                  // Static leading text (e.g. +62) sits before the cursor;
-                  // hint shows full example format so nothing overlaps.
                   prefixText: leadingText,
                   prefixStyle: AppTextStyles.inputText.copyWith(
                     color: hasError ? AppColors.error : AppColors.textPrimary,
@@ -827,7 +708,6 @@ class _AuthPageState extends ConsumerState<AuthPage> {
     );
   }
 
-  // Dropdown matching Figma input style
   Widget _buildDropdown<T>({
     required String label,
     required T value,
