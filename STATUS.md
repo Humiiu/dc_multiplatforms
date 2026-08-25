@@ -58,6 +58,15 @@
 - Includes: all screens, services, models, providers, theme, constants, assets, docs, CI
 - Working tree now clean (0 unstaged, 0 untracked)
 
+### ✅ Just Completed (session 10, 2026-08-25): Fix Android compatibility
+- **compileSdk/targetSdk** (`android/app/build.gradle`): set to `35` (stable, matches installed `android-35`)
+- **NDK** (`android/app/build.gradle`): set to `27.0.12077973` (installed via sdkmanager, required by Firebase plugins)
+- **AGP** (`android/settings.gradle`): upgraded from `8.1.0` → `8.7.3`
+- **Gradle** (`gradle-wrapper.properties`): upgraded from `8.3` → `8.9`
+- **Kotlin** (`android/settings.gradle`): upgraded from `1.8.22` → `1.9.24`
+- **Root cause**: NDK missing + old AGP/Gradle couldn't handle compileSdk 35 with Firebase plugins
+- **Build**: `flutter build apk --debug` ✅ SUCCESS
+
 ### ✅ Just Completed (session 9, 2026-08-25): Fix permission-denied + TextStyle error
 - **Username/phone lookup indexes** (`database_service.dart`): added `/usernames/{username}` and `/phones/{phone}` lookup paths — `getUserByUsername`, `getUserByPhone`, `isUsernameTaken`, `isPhoneRegistered` now use direct path reads instead of `orderByChild` queries on `/users` (which were denied by rules)
 - **`setUser` batch write** (`database_service.dart`): writes to `users/$uid`, `usernames/$username`, `phones/$phone` in single `_root.update()` call
@@ -92,6 +101,11 @@
 - **`_buildInputField` updated**: `prefixIcon` now nullable, new `formatters` param overrides `digitsOnly`
 - **Tests expanded**: 9 new `PhoneInputFormatter` tests (format, strip, limit, normalize roundtrip) — total 20 tests passing
 - **Flutter analyze**: 1 info only (pre-existing `use_build_context_synchronously` in checkout)
+
+### ✅ Validation (2026-08-25, session 10)
+- `flutter analyze` — 1 info only (`use_build_context_synchronously` in checkout, pre-existing)
+- `flutter test` — PASS (22 tests)
+- `flutter build apk --debug` — SUCCESS
 
 ### ✅ Validation (2026-08-25, session 9)
 - `flutter analyze` — 1 info only (`use_build_context_synchronously` in checkout, pre-existing)
