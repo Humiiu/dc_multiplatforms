@@ -335,18 +335,6 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                     },
                     onFieldSubmitted: (value) => _sendOtp(),
                   ),
-                ] else if (_codeSent && !_isRegistering) ...[
-                  // Login with OTP
-                  _buildInputField(
-                    controller: _codeCtrl,
-                    label: 'Kode OTP',
-                    hintText: 'Masukkan kode 6 digit',
-                    keyboardType: TextInputType.number,
-                    prefixIcon: Icons.sms_outlined,
-                    maxLength: 6,
-                    fieldKey: 'code',
-                    onFieldSubmitted: (value) => _verifyOtp(),
-                  ),
                 ] else if (_codeSent && _isRegistering) ...[
                   // Register step 2 - OTP + details
                   _buildInputField(
@@ -565,8 +553,6 @@ class _AuthPageState extends ConsumerState<AuthPage> {
       fields.addAll(['username', 'password']);
     } else if (!_codeSent && _isRegistering) {
       fields.add('phone');
-    } else if (_codeSent && !_isRegistering) {
-      fields.add('code');
     } else if (_codeSent && _isRegistering) {
       fields.addAll(['code', 'username', 'name', 'password', 'confirmPassword']);
     }
