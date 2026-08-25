@@ -58,14 +58,26 @@ class DatabaseService {
     }
   }
 
-  /// Look up user by phone number via /phones lookup index
-  Future<AppUser?> getUserByPhone(String phone) async {
+  /// Get UID by phone from /phones lookup (no auth needed)
+  Future<String?> getUidByPhone(String phone) async {
     try {
       final snap = await _root.child('phones').child(phone).get();
       if (!snap.exists || snap.value == null) return null;
       final data = snap.value as Map;
       final uid = data['uid'] as String?;
       if (uid == null || uid.isEmpty) return null;
+      return uid;
+    } catch (e) {
+      debugPrint('[DatabaseService] getUidByPhone error: $e');
+      return null;
+    }
+  }
+
+  /// Look up user by phone number via /phones lookup index
+  Future<AppUser?> getUserByPhone(String phone) async {
+    try {
+      final uid = await getUidByPhone(phone);
+      if (uid == null) return null;
       return getUser(uid);
     } catch (e) {
       debugPrint('[DatabaseService] getUserByPhone error: $e');

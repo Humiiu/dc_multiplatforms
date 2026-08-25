@@ -42,13 +42,14 @@ class AuthService {
   /// Login with phone + password
   Future<User?> signInWithEmailAndPassword(String phone, String password) async {
     final db = ref.read(databaseServiceProvider);
-    final appUser = await db.getUserByPhone(phone);
+    final uid = await db.getUidByPhone(phone);
 
-    if (appUser == null) {
+    if (uid == null) {
       throw Exception('Akun tidak ditemukan. Silakan daftar terlebih dahulu.');
     }
 
-    final email = '${appUser.uid}@catering.app';
+    // Use UID-based email format for Firebase auth
+    final email = '$uid@catering.app';
     final userCredential = await _auth.signInWithEmailAndPassword(
       email: email,
       password: password,
