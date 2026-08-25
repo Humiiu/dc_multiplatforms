@@ -43,3 +43,20 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Firebase
+**/google-services.json
+**/GoogleService-Info.plist
+firebase.json
+.firebaserc
+firebase-debug.log
+firestore.rules
+firestore.indexes.json
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Analysis
+analysis_output.txt
