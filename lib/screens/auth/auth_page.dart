@@ -169,11 +169,17 @@ class _AuthPageState extends ConsumerState<AuthPage> {
   }
 
   Future<void> _loginWithPassword() async {
-    final usernameOrPhone = _usernameCtrl.text.trim();
+    final rawPhone = _phoneCtrl.text.trim();
     final password = _passwordCtrl.text;
 
-    if (usernameOrPhone.isEmpty || password.isEmpty) {
-      setState(() => _errorMessage = 'Username/nomor dan password wajib diisi');
+    if (rawPhone.isEmpty || password.isEmpty) {
+      setState(() => _errorMessage = 'Nomor telepon dan password wajib diisi');
+      return;
+    }
+
+    final normalized = normalizeIndonesianPhone(rawPhone);
+    if (normalized == null) {
+      setState(() => _errorMessage = 'Format nomor telepon tidak valid');
       return;
     }
 
@@ -184,7 +190,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
 
     try {
       await ref.read(authServiceProvider).signInWithEmailAndPassword(
-            usernameOrPhone,
+            normalized,
             password,
           );
 
@@ -266,14 +272,17 @@ class _AuthPageState extends ConsumerState<AuthPage> {
 
                 // Form fields
                 if (!_codeSent && !_isRegistering) ...[
-                  // Login form - Username/Phone + Password
+                  // Login form - Phone + Password
                   _buildInputField(
-                    controller: _usernameCtrl,
-                    label: 'Username atau Nomor Telepon',
-                    hintText: 'Masukkan username atau +628xx',
-                    keyboardType: TextInputType.text,
-                    prefixIcon: Icons.person_outline,
-                    fieldKey: 'username',
+                    controller: _phoneCtrl,
+                    label: 'Nomor Telepon',
+                    hintText: '',
+                    keyboardType: TextInputType.phone,
+                    prefixIcon: Icons.phone_outlined,
+                    fieldKey: 'phone',
+                    leadingText: '+62 ',
+                    digitsOnly: true,
+                    formatters: [PhoneInputFormatter()],
                   ),
                   const SizedBox(height: 16),
                   _buildInputField(
