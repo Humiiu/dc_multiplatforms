@@ -75,21 +75,40 @@ class AuthService {
   }
 
   // 4️⃣ Login with username/phone + password
-  Future<User?> signInWithEmailAndPassword(String emailOrPhone, String password) async {
-    String email = emailOrPhone;
-    // If input looks like phone number, convert to email format
-    // For now, we assume username is used as email or we store email separately
-    if (emailOrPhone.startsWith('+62') || emailOrPhone.startsWith('08')) {
-      // Phone number login - we'd need to look up the user by phone first
-      // For simplicity, we'll use Firebase's email/password auth
-      // In production, you'd query the database to find the email by phone
-      throw Exception('Login dengan nomor telepon belum didukung. Gunakan username/email.');
+  Future<User?> signInWithEmailAndPassword(String usernameOrPhone, String password) async {
+    final db = ref.read(databaseServiceProvider);
+    AppUser? appUser;
+
+    // Determine if input is phone number or username
+    final isPhone = usernameOrPhone.startsWith('+62') ||
+        usernameOrPhone.startsWith('08') ||
+        usernameOrPhone.startsWith('62');
+
+    if (isPhone) {
+      // Normalize phone and look up by phone
+      // For login, accept raw input and try to normalize
+      var digits = usernameOrPhone.replaceAll(RegExp(r'[\s\-().]'), '');
+      if (digits.startsWith('+62')) {
+        digits = digits.substring(3);
+      } else if (digits.startsWith('62')) {
+        digits = digits.substring(2);
+      } else if (digits.startsWith('0')) {
+        digits = digits.substring(1);
+      }
+      if (digits.startsWith('8') && digits.length >= 9) {
+        appUser = await db.getUserByPhone('+62$digits');
+      }
+    } else {
+      // Look up by username
+      appUser = await db.getUserByUsername(usernameOrPhone.trim());
     }
-    // Assume it's an email or username
-    if (!emailOrPhone.contains('@')) {
-      // Treat as username - in production, look up email by username
-      email = '$emailOrPhone@catering.app';
+
+    if (appUser == null) {
+      throw Exception('Akun tidak ditemukan. Silakan daftar terlebih dahulu.');
     }
+
+    // Use UID-based email format for Firebase auth
+    final email = '${appUser.uid}@catering.app';
     final userCredential = await _auth.signInWithEmailAndPassword(
       email: email,
       password: password,

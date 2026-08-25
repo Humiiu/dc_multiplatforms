@@ -31,6 +31,9 @@ class HistoryPage extends ConsumerWidget {
           if (snap.connectionState != ConnectionState.done) {
             return const Center(child: CircularProgressIndicator());
           }
+          if (snap.hasError) {
+            return _EmptyHistoryState();
+          }
           final orders = snap.data ?? [];
           if (orders.isEmpty) {
             return _EmptyHistoryState();

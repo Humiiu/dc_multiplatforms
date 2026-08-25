@@ -800,8 +800,7 @@ class _PaymentOptionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.lg),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          height: 100,
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: ShapeDecoration(
             color: isPrimary ? AppColors.primary : (isEnabled ? Colors.white : AppColors.accent),
             shape: RoundedRectangleBorder(
@@ -840,6 +839,8 @@ class _PaymentOptionCard extends StatelessWidget {
                   children: [
                     Text(
                       title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.bodyMediumBold.copyWith(
                         color: isPrimary ? Colors.white : (isEnabled ? AppColors.textPrimary : AppColors.textSecondary),
                       ),
@@ -847,6 +848,8 @@ class _PaymentOptionCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.caption.copyWith(
                         color: isPrimary ? Colors.white.withValues(alpha: 0.8) : AppColors.textSecondary,
                       ),

@@ -6,7 +6,7 @@ import '../../core/theme.dart';
 import '../../models/user.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
-import '../../widgets/logo_widget.dart' show AppLogo, normalizeIndonesianPhone;
+import '../../widgets/logo_widget.dart' show AppLogo, normalizeIndonesianPhone, PhoneInputFormatter;
 
 class AuthPage extends ConsumerStatefulWidget {
   const AuthPage({super.key});
@@ -135,15 +135,24 @@ class _AuthPageState extends ConsumerState<AuthPage> {
         // Save the normalized phone number
         final normalizedPhone =
             normalizeIndonesianPhone(_phoneCtrl.text.trim()) ?? _phoneCtrl.text.trim();
+        final uid = user.uid;
 
-        // Register user with full data
+        // Register user data in Realtime Database
         await ref.read(authServiceProvider).registerUser(
-              uid: user.uid,
+              uid: uid,
               username: _usernameCtrl.text.trim(),
               phone: normalizedPhone,
               name: _nameCtrl.text.trim(),
               jurusan: _selectedJurusan,
               kelas: _selectedKelas,
+            );
+
+        // Create Firebase email account so user can login with username/password
+        // Sign out from phone auth first, then create email account, then sign back in
+        await ref.read(authServiceProvider).signOut();
+        await ref.read(authServiceProvider).createUserWithEmailAndPassword(
+              '$uid@catering.app',
+              _passwordCtrl.text,
             );
       }
 
@@ -306,16 +315,17 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                     ),
                   ),
                 ] else if (!_codeSent && _isRegistering) ...[
-                  // Register step 1 - Phone number (auto +62 prefix, digits only)
+                  // Register step 1 - Phone number (auto +62 prefix, formatted display)
                   _buildInputField(
                     controller: _phoneCtrl,
                     label: 'Nomor Telepon',
-                    hintText: '+62 8xx xxx xxxx',
+                    hintText: '8999-107-194',
                     keyboardType: TextInputType.phone,
-                    prefixIcon: Icons.phone_outlined,
+                    prefixIcon: null,
                     fieldKey: 'phone',
                     digitsOnly: true,
-                    leadingText: '+62',
+                    formatters: [PhoneInputFormatter()],
+                    leadingText: null,
                     onChanged: (_) {
                       // Clear stale global error while typing once format is fixable
                       if (_errorMessage != null &&
@@ -697,10 +707,11 @@ class _AuthPageState extends ConsumerState<AuthPage> {
     required TextEditingController controller,
     required String label,
     required String hintText,
-    required IconData prefixIcon,
+    IconData? prefixIcon,
     IconData? suffixIcon,
     String? leadingText, // static text rendered inside field (e.g. '+62')
     bool digitsOnly = false,
+    List<TextInputFormatter>? formatters,
     TextInputType? keyboardType,
     bool obscureText = false,
     int? maxLength,
@@ -751,9 +762,10 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                 obscureText: obscureText,
                 maxLength: maxLength,
                 style: AppTextStyles.inputText,
-                inputFormatters: digitsOnly
-                    ? [FilteringTextInputFormatter.digitsOnly]
-                    : null,
+                inputFormatters: formatters ??
+                    (digitsOnly
+                        ? [FilteringTextInputFormatter.digitsOnly]
+                        : null),
                 onSubmitted: onFieldSubmitted,
                 onChanged: onChanged,
                 onTap: () {
@@ -770,7 +782,9 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                   prefixStyle: AppTextStyles.inputText.copyWith(
                     color: hasError ? AppColors.error : AppColors.textPrimary,
                   ),
-                  prefixIcon: Icon(prefixIcon, color: hasError ? AppColors.error : AppColors.textSecondary, size: 20),
+                  prefixIcon: prefixIcon != null
+                      ? Icon(prefixIcon, color: hasError ? AppColors.error : AppColors.textSecondary, size: 20)
+                      : null,
                   suffixIcon: suffixIcon != null
                       ? IconButton(
                           icon: Icon(suffixIcon, color: hasError ? AppColors.error : AppColors.textSecondary, size: 20),

@@ -1,0 +1,19 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid"
+      }
+    },
+    "menus": {
+      ".read": true,
+      ".write": false
+    },
+    "orders": {
+      ".read": "$uid === auth.uid",
+      ".write": "$uid === auth.uid",
+      ".indexOn": ["userId"]
+    }
+  }
+}

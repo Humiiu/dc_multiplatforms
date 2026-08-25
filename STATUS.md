@@ -6,11 +6,11 @@
 **Tech Stack:** Flutter + Riverpod + Firebase Auth (Phone OTP) + Firebase Realtime Database + GoRouter  
 
 ## Git State
-- **Branch:** `master` (on commit `6ee4583`)
-- **Staged:** 37 files (all implementation + docs)
-- **Modified (unstaged):** 0
+- **Branch:** `master` (on commit `68dad38`)
+- **Staged:** 0
+- **Modified (unstaged):** 7 files (auth_page, auth_service, database_service, database.rules.json, history_page, logo_widget, order_page, phone_normalization_test)
 - **Untracked:** 0
-- **Last commit:** `Implement complete catering booking app UI per Figma design`
+- **Last commit:** `Fix duplicated session 3 notes in STATUS.md`
 
 ## Implementation Status
 
@@ -58,6 +58,31 @@
 - Includes: all screens, services, models, providers, theme, constants, assets, docs, CI
 - Working tree now clean (0 unstaged, 0 untracked)
 
+### ✅ Just Completed (session 6, 2026-08-25): Runtime error fixes
+- **RenderFlex overflow fixed** (`order_page.dart`): removed fixed `height: 100` from `_PaymentOptionCard` AnimatedContainer, changed to `padding: symmetric(h:16, v:14)` so card sizes to content; added `maxLines: 1` to title, `maxLines: 2` with `TextOverflow.ellipsis` to subtitle — prevents 3-line subtitle from overflowing 68px content area
+- **Firebase index error fixed** (`database_service.dart`): `getUserOrders` queries `/orders` with `orderByChild('userId')` — added try/catch with `debugPrint` + empty list fallback; same for `getActiveOrders`
+- **`database.rules.json` created**: contains `.indexOn: ["userId"]` for `/orders` path — must be deployed to Firebase Console manually
+- **History page error handling** (`history_page.dart`): FutureBuilder now checks `snap.hasError` and shows empty state instead of crash
+
+### ✅ Just Completed (session 5, 2026-08-25): Auth + phone input fixes
+- **PhoneInputFormatter added** (`logo_widget.dart`): formats display as `+62 8999-107-194` with auto dashes; strips non-digits, limits to 10 digits; cursor always at end
+- **Register phone field updated** (`auth_page.dart`): removed prefix icon (matching Figma `regis.png`), applied `PhoneInputFormatter`, hint shows `8999-107-194`
+- **Logo shadow reverted to Figma** (`logo_widget.dart`): `Color(0x3F000000)`, blur 4, offset (-4,4) — matches Figma export exactly
+- **Login auth flow fixed** (`auth_service.dart`): looks up user by username or phone in Realtime DB, then signs in with UID-based email (`{uid}@catering.app`)
+- **Registration creates email account** (`auth_page.dart`): after OTP verification + DB save, signs out from phone auth, creates Firebase email account, enabling username/password login
+- **DB lookup methods added** (`database_service.dart`): `getUserByUsername()`, `getUserByPhone()` — query Firebase DB by field
+- **`_buildInputField` updated**: `prefixIcon` now nullable, new `formatters` param overrides `digitsOnly`
+- **Tests expanded**: 9 new `PhoneInputFormatter` tests (format, strip, limit, normalize roundtrip) — total 20 tests passing
+- **Flutter analyze**: 1 info only (pre-existing `use_build_context_synchronously` in checkout)
+
+### ✅ Validation (2026-08-25, session 6)
+- `flutter analyze` — 1 info only (`use_build_context_synchronously` in checkout, pre-existing)
+- `flutter test` — PASS (20 tests)
+
+### ✅ Validation (2026-08-25, session 5)
+- `flutter analyze` — 1 info only (`use_build_context_synchronously` in checkout, pre-existing)
+- `flutter test` — PASS (20 tests: 10 phone normalization + 9 PhoneInputFormatter + 1 app smoke test)
+
 ### ✅ Validation (2026-08-25, session 3)
 - `flutter analyze` — 1 info only (`use_build_context_synchronously` in checkout, pre-existing, non-fatal)
 - `flutter test` — PASS (11 tests: 10 phone normalization + 1 app smoke test)
@@ -94,11 +119,18 @@
 - None — working tree is clean
 
 ## Next Tasks
-1. **Add `image_picker` dependency** — For profile photo upload feature
-2. **Implement profile photo upload** — `image_picker` + Firebase Storage
-3. **Implement Midtrans Cloud Function** — For real QRIS payment integration
-4. **Add comprehensive widget tests** — For all screens
-5. **Configure Firebase for production** — google-services.json, GoogleService-Info.plist
+1. **Deploy Firebase Realtime Database rules** — Copy `database.rules.json` to Firebase Console (Realtime Database → Rules) to add `.indexOn: ["userId"]` for `/orders`
+2. **Add `image_picker` dependency** — For profile photo upload feature
+3. **Implement profile photo upload** — `image_picker` + Firebase Storage
+4. **Implement Midtrans Cloud Function** — For real QRIS payment integration
+5. **Add comprehensive widget tests** — For all screens (auth, home, order, checkout, history, profile)
+6. **Configure Firebase for production** — google-services.json, GoogleService-Info.plist
+
+## Manual Firebase Config Required
+The file `database.rules.json` has been created in the project root with the correct rules including `.indexOn: ["userId"]` for `/orders`. To deploy:
+1. Open [Firebase Console](https://console.firebase.google.com) → your project → Realtime Database → Rules
+2. Paste the contents of `database.rules.json`
+3. Click "Publish"
 
 ## Validation Commands
 ```bash
