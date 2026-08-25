@@ -94,9 +94,9 @@ void main() {
       expect(result.text, '8999-107-194');
     });
 
-    test('limits to 10 digits max', () {
+    test('limits to 12 digits max', () {
       final result = formatText('89991071940000');
-      expect(result.text, '8999-107-194');
+      expect(result.text, '8999-107-19400');
     });
 
     test('strips leading zero', () {

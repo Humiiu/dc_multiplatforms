@@ -118,9 +118,9 @@ class PhoneInputFormatter extends TextInputFormatter {
       digits = digits.substring(2);
     }
 
-    // Limit to 10 digits max (Indonesian mobile: 8xx + up to 9 digits = 12 total, but
-    // here we only want the part after +62)
-    final clamped = digits.length > 10 ? digits.substring(0, 10) : digits;
+    // Limit to 12 digits max (Indonesian mobile after prefix: 8XX-XXXX-XXXX = 11 digits,
+    // some numbers may have 12 digits)
+    final clamped = digits.length > 12 ? digits.substring(0, 12) : digits;
 
     if (clamped.isEmpty) {
       return const TextEditingValue(
