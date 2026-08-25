@@ -12,7 +12,9 @@ import '../../providers/auth_provider.dart';
 /// Provider tagihan aktif user (utang yang belum dibayar).
 final tagihanProvider = FutureProvider<int>((ref) async {
   final db = ref.read(databaseServiceProvider);
-  final orders = await db.getActiveOrders();
+  final uid = ref.watch(currentUserIdProvider);
+  if (uid == null) return 0;
+  final orders = await db.getActiveOrders(uid);
   return orders.fold(0, (sum, o) => o.totalPrice);
 });
 

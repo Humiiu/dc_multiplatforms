@@ -58,6 +58,13 @@
 - Includes: all screens, services, models, providers, theme, constants, assets, docs, CI
 - Working tree now clean (0 unstaged, 0 untracked)
 
+### ✅ Just Completed (session 8, 2026-08-25): Fix Firebase permission-denied
+- **`getActiveOrders()` fixed** (`database_service.dart`): now takes `uid` parameter, queries `/orders` with `orderByChild('userId').equalTo(uid)` instead of reading ALL orders — eliminates permission-denied on home page
+- **`tagihanProvider` fixed** (`home_page.dart`): passes `currentUserIdProvider` to `getActiveOrders(uid)`, returns 0 if user not logged in
+- **`database.rules.json` rewritten**: rules now check per-order `data.child('userId').val() === auth.uid` for read/write at `/orders/{orderId}` level, not broken `$uid === auth.uid` at `/orders` level
+- **`markPaid` error handling** (`database_service.dart`): added try/catch with debugPrint + rethrow
+- **Root cause**: `getActiveOrders()` read all `/orders` without filtering by userId → Firebase rules denied the entire read
+
 ### ✅ Just Completed (session 7, 2026-08-25): Fix phone input spam + clean up
 - **PhoneInputFormatter rewritten** (`logo_widget.dart`): no longer prepends `+62` into text value — only formats digits as `XXXX-XXX-XXX`. Strips leading `0` or `62` if user types them. Prevents the spam/loop bug where `+62` reappeared on every keystroke.
 - **Phone field hint removed** (`auth_page.dart`): `hintText: ''`, `leadingText: '+62 '` — the `+62` now shows as a permanent prefix via `prefixText` decoration, not as part of editable text.
@@ -79,6 +86,10 @@
 - **`_buildInputField` updated**: `prefixIcon` now nullable, new `formatters` param overrides `digitsOnly`
 - **Tests expanded**: 9 new `PhoneInputFormatter` tests (format, strip, limit, normalize roundtrip) — total 20 tests passing
 - **Flutter analyze**: 1 info only (pre-existing `use_build_context_synchronously` in checkout)
+
+### ✅ Validation (2026-08-25, session 8)
+- `flutter analyze` — 1 info only (`use_build_context_synchronously` in checkout, pre-existing)
+- `flutter test` — PASS (22 tests)
 
 ### ✅ Validation (2026-08-25, session 7)
 - `flutter analyze` — 1 info only (`use_build_context_synchronously` in checkout, pre-existing)
@@ -140,6 +151,13 @@ The file `database.rules.json` has been created in the project root with the cor
 1. Open [Firebase Console](https://console.firebase.google.com) → your project → Realtime Database → Rules
 2. Paste the contents of `database.rules.json`
 3. Click "Publish"
+
+### ⚠️ Firebase Rules yang Harus Di-publish Manual
+File `database.rules.json` di root proyek berisi rules lengkap. Harus dipublish secara manual di Firebase Console:
+1. Buka Firebase Console → Realtime Database → Rules
+2. Copy-paste isi `database.rules.json`
+3. Klik Publish
+4. Rules meliputi: `/users/{uid}`, `/menus`, `/orders/{orderId}` dengan `.indexOn: ["userId"]`
 
 ## Validation Commands
 ```bash

@@ -118,10 +118,14 @@ class DatabaseService {
     }
   }
 
-  /// Get all active (unpaid) orders - used for Tagihan Kamu
-  Future<List<Order>> getActiveOrders() async {
+  /// Get all active (unpaid) orders for a specific user - used for Tagihan Kamu
+  Future<List<Order>> getActiveOrders(String uid) async {
     try {
-      final snap = await _root.child('orders').get();
+      final snap = await _root
+          .child('orders')
+          .orderByChild('userId')
+          .equalTo(uid)
+          .get();
       if (!snap.exists) return [];
       final map = (snap.value as Map).cast<String, dynamic>();
       return map.entries
@@ -134,8 +138,13 @@ class DatabaseService {
     }
   }
 
-  /// Mark order as paid
+  /// Mark order as paid (with error handling)
   Future<void> markPaid(String orderId) async {
-    await _root.child('orders').child(orderId).child('isPaid').set(true);
+    try {
+      await _root.child('orders').child(orderId).child('isPaid').set(true);
+    } catch (e) {
+      debugPrint('[DatabaseService] markPaid error: $e');
+      rethrow;
+    }
   }
 }

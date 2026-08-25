@@ -2,8 +2,8 @@
   "rules": {
     "users": {
       "$uid": {
-        ".read": "$uid === auth.uid",
-        ".write": "$uid === auth.uid"
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
       }
     },
     "menus": {
@@ -11,9 +11,11 @@
       ".write": false
     },
     "orders": {
-      ".read": "$uid === auth.uid",
-      ".write": "$uid === auth.uid",
-      ".indexOn": ["userId"]
+      ".indexOn": ["userId"],
+      "$orderId": {
+        ".read": "auth != null && data.child('userId').val() === auth.uid",
+        ".write": "auth != null && (!data.exists() && newData.child('userId').val() === auth.uid || data.child('userId').val() === auth.uid)"
+      }
     }
   }
 }
