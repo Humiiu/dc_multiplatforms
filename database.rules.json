@@ -7,13 +7,13 @@
       }
     },
     "usernames": {
-      ".read": "auth != null",
+      ".read": true,
       "$username": {
         ".write": "auth != null && !data.exists()"
       }
     },
     "phones": {
-      ".read": "auth != null",
+      ".read": true,
       "$phone": {
         ".write": "auth != null && !data.exists()"
       }
