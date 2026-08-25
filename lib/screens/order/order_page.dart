@@ -848,7 +848,7 @@ class _PaymentOptionCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.caption.copyWith(
                         color: isPrimary ? Colors.white.withValues(alpha: 0.8) : AppColors.textSecondary,
