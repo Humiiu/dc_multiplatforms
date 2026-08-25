@@ -235,7 +235,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                     label: 'Nomor Telepon',
                     hintText: '',
                     keyboardType: TextInputType.phone,
-                    prefixIcon: Icons.phone_outlined,
+                    prefixIcon: null,
                     fieldKey: 'phone',
                     leadingText: '+62 ',
                     digitsOnly: true,
@@ -248,7 +248,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                     hintText: 'Masukkan password',
                     keyboardType: TextInputType.visiblePassword,
                     obscureText: _obscurePassword,
-                    prefixIcon: Icons.lock_outline,
+                    prefixIcon: null,
                     suffixIcon: _obscurePassword
                         ? Icons.visibility_off_outlined
                         : Icons.visibility_outlined,
