@@ -6,6 +6,7 @@ import '../../core/theme.dart';
 import '../../models/user.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
+import '../../providers/auth_provider.dart' show otpStatusProvider, otpErrorProvider, OtpStatus;
 import '../../widgets/logo_widget.dart' show AppLogo, normalizeIndonesianPhone, PhoneInputFormatter;
 
 class AuthPage extends ConsumerStatefulWidget {
@@ -68,17 +69,44 @@ class _AuthPageState extends ConsumerState<AuthPage> {
       _errorMessage = null;
     });
 
-    try {
-      await ref.read(authServiceProvider).sendOtp(normalized);
-      if (mounted) {
-        setState(() => _codeSent = true);
+    // Reset OTP state
+    ref.read(otpStatusProvider.notifier).state = OtpStatus.sending;
+    ref.read(otpErrorProvider.notifier).state = null;
+
+    // sendOtp is callback-based, fire and observe state
+    ref.read(authServiceProvider).sendOtp(normalized);
+
+    // Poll for status changes (verificationFailed / codeSent callbacks)
+    // Max wait 30 seconds, check every 500ms
+    for (var i = 0; i < 60; i++) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (!mounted) return;
+
+      final status = ref.read(otpStatusProvider);
+      final error = ref.read(otpErrorProvider);
+
+      if (status == OtpStatus.sent) {
+        setState(() {
+          _codeSent = true;
+          _isLoading = false;
+        });
+        return;
       }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _errorMessage = e.toString().replaceFirst('Exception: ', ''));
+      if (status == OtpStatus.error) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = error ?? 'Gagal mengirim OTP.';
+        });
+        return;
       }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+    }
+
+    // Timeout
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Timeout — pastikan nomor valid dan jaringan stabil.';
+      });
     }
   }
 

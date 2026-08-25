@@ -23,6 +23,15 @@ final isAuthenticatedProvider = Provider<bool>((ref) {
 /// Verification ID for OTP flow
 final verificationIdProvider = StateProvider<String>((ref) => '');
 
+/// OTP status: idle, sending, sent, error
+enum OtpStatus { idle, sending, sent, error }
+
+/// OTP status provider
+final otpStatusProvider = StateProvider<OtpStatus>((ref) => OtpStatus.idle);
+
+/// OTP error message provider
+final otpErrorProvider = StateProvider<String?>((ref) => null);
+
 /// Registration form state
 final registrationFormProvider = StateProvider<Map<String, dynamic>>((ref) => {
   'username': '',

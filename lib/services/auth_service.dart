@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user.dart';
+import '../providers/auth_provider.dart' show otpStatusProvider, otpErrorProvider, OtpStatus;
 import '../services/database_service.dart';
 
 final verificationIdProvider = StateProvider<String>((ref) => '');
@@ -17,20 +19,50 @@ class AuthService {
   AuthService(this.ref);
 
   // 1️⃣ Send OTP to phone number (for registration)
-  Future<void> sendOtp(String phoneNumber) async {
-    await _auth.verifyPhoneNumber(
+  // Uses state providers so UI can react to callbacks properly.
+  void sendOtp(String phoneNumber) {
+    ref.read(otpStatusProvider.notifier).state = OtpStatus.sending;
+    ref.read(otpErrorProvider.notifier).state = null;
+
+    _auth.verifyPhoneNumber(
       phoneNumber: phoneNumber,
+      timeout: const Duration(seconds: 60),
       verificationCompleted: (PhoneAuthCredential credential) async {
-        // Auto-verification (Android)
+        // Auto-verification (Android) — sign in directly
+        debugPrint('[AuthService] Auto-verification completed');
         await _auth.signInWithCredential(credential);
+        ref.read(otpStatusProvider.notifier).state = OtpStatus.sent;
       },
       verificationFailed: (FirebaseAuthException e) {
-        throw Exception('Verifikasi gagal: ${e.message}');
+        debugPrint('[AuthService] Verification failed: ${e.code} ${e.message}');
+        ref.read(otpStatusProvider.notifier).state = OtpStatus.error;
+        // Map common error codes to user-friendly messages
+        String msg;
+        switch (e.code) {
+          case 'invalid-phone-number':
+            msg = 'Nomor telepon tidak valid.';
+            break;
+          case 'quota-exceeded':
+            msg = 'Kuota SMS habis. Coba lagi nanti.';
+            break;
+          case 'too-many-requests':
+            msg = 'Terlalu banyak percobaan. Tunggu beberapa menit.';
+            break;
+          case 'app-not-authorized':
+            msg = 'Aplikasi belum terdaftar di Firebase. Hubungi developer.';
+            break;
+          default:
+            msg = 'Verifikasi gagal: ${e.message}';
+        }
+        ref.read(otpErrorProvider.notifier).state = msg;
       },
       codeSent: (String verificationId, int? resendToken) {
+        debugPrint('[AuthService] Code sent! verificationId: $verificationId');
         ref.read(verificationIdProvider.notifier).state = verificationId;
+        ref.read(otpStatusProvider.notifier).state = OtpStatus.sent;
       },
       codeAutoRetrievalTimeout: (String verificationId) {
+        debugPrint('[AuthService] Auto-retrieval timeout');
         ref.read(verificationIdProvider.notifier).state = verificationId;
       },
     );
