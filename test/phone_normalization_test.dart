@@ -64,39 +64,49 @@ void main() {
       return formatter.formatEditUpdate(old, TextEditingValue(text: text, selection: sel));
     }
 
-    test('formats single digit with prefix', () {
+    test('formats single digit', () {
       final result = formatText('8');
-      expect(result.text, '+62 8');
+      expect(result.text, '8');
     });
 
     test('formats 4 digits with dash after 4th', () {
       final result = formatText('8999');
-      expect(result.text, '+62 8999');
+      expect(result.text, '8999');
     });
 
     test('formats 5 digits with dash', () {
       final result = formatText('89991');
-      expect(result.text, '+62 8999-1');
+      expect(result.text, '8999-1');
     });
 
     test('formats full 10-digit number', () {
       final result = formatText('8999107194');
-      expect(result.text, '+62 8999-107-194');
+      expect(result.text, '8999-107-194');
     });
 
     test('strips non-digit characters', () {
       final result = formatText('8999-107-194');
-      expect(result.text, '+62 8999-107-194');
+      expect(result.text, '8999-107-194');
     });
 
     test('strips letters', () {
       final result = formatText('abc8999107194');
-      expect(result.text, '+62 8999-107-194');
+      expect(result.text, '8999-107-194');
     });
 
-    test('limits to 12 digits max', () {
+    test('limits to 10 digits max', () {
       final result = formatText('89991071940000');
-      expect(result.text, '+62 8999-107-194');
+      expect(result.text, '8999-107-194');
+    });
+
+    test('strips leading zero', () {
+      final result = formatText('08999107194');
+      expect(result.text, '8999-107-194');
+    });
+
+    test('strips leading 62', () {
+      final result = formatText('628999107194');
+      expect(result.text, '8999-107-194');
     });
 
     test('empty input returns empty', () {

@@ -101,18 +101,25 @@ class AppLogoFallback extends StatelessWidget {
 /// User types raw digits; formatter adds spaces/dashes for readability.
 /// Raw digits (without prefix) are stored; normalization happens at submit.
 class PhoneInputFormatter extends TextInputFormatter {
-  /// Formats the display text.
-  /// Input: raw digits (e.g. "8999107194")
-  /// Output: "+62 8999-107-194"
+  /// Formats the display text as "XXXX-XXX-XXX".
+  /// The "+62" prefix should be handled by the TextField decoration.
   @override
   TextEditingValue formatEditUpdate(
     TextEditingValue oldValue,
     TextEditingValue newValue,
   ) {
     // Strip everything that isn't a digit
-    final digits = newValue.text.replaceAll(RegExp(r'\D'), '');
+    var digits = newValue.text.replaceAll(RegExp(r'\D'), '');
 
-    // Limit to 10 digits max (Indonesian mobile: 8xx + 7 digits = 10)
+    // Strip leading '0' or '62' if user tries to type it
+    if (digits.startsWith('0')) {
+      digits = digits.substring(1);
+    } else if (digits.startsWith('62')) {
+      digits = digits.substring(2);
+    }
+
+    // Limit to 10 digits max (Indonesian mobile: 8xx + up to 9 digits = 12 total, but
+    // here we only want the part after +62)
     final clamped = digits.length > 10 ? digits.substring(0, 10) : digits;
 
     if (clamped.isEmpty) {
@@ -122,8 +129,8 @@ class PhoneInputFormatter extends TextInputFormatter {
       );
     }
 
-    // Build formatted string: "+62 XXXX-XXX-XXX"
-    final buf = StringBuffer('+62 ');
+    // Build formatted string: "XXXX-XXX-XXX"
+    final buf = StringBuffer();
     for (var i = 0; i < clamped.length; i++) {
       buf.write(clamped[i]);
       // Add dash after positions 3, 6 only if more digits follow

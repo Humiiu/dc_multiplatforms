@@ -58,6 +58,11 @@
 - Includes: all screens, services, models, providers, theme, constants, assets, docs, CI
 - Working tree now clean (0 unstaged, 0 untracked)
 
+### ✅ Just Completed (session 7, 2026-08-25): Fix phone input spam + clean up
+- **PhoneInputFormatter rewritten** (`logo_widget.dart`): no longer prepends `+62` into text value — only formats digits as `XXXX-XXX-XXX`. Strips leading `0` or `62` if user types them. Prevents the spam/loop bug where `+62` reappeared on every keystroke.
+- **Phone field hint removed** (`auth_page.dart`): `hintText: ''`, `leadingText: '+62 '` — the `+62` now shows as a permanent prefix via `prefixText` decoration, not as part of editable text.
+- **Tests updated** (`phone_normalization_test.dart`): 22 tests passing, including new tests for stripping leading `0` and `62`.
+
 ### ✅ Just Completed (session 6, 2026-08-25): Runtime error fixes
 - **RenderFlex overflow fixed** (`order_page.dart`): removed fixed `height: 100` from `_PaymentOptionCard` AnimatedContainer, changed to `padding: symmetric(h:16, v:14)` so card sizes to content; added `maxLines: 1` to title, `maxLines: 2` with `TextOverflow.ellipsis` to subtitle — prevents 3-line subtitle from overflowing 68px content area
 - **Firebase index error fixed** (`database_service.dart`): `getUserOrders` queries `/orders` with `orderByChild('userId')` — added try/catch with `debugPrint` + empty list fallback; same for `getActiveOrders`
@@ -74,6 +79,10 @@
 - **`_buildInputField` updated**: `prefixIcon` now nullable, new `formatters` param overrides `digitsOnly`
 - **Tests expanded**: 9 new `PhoneInputFormatter` tests (format, strip, limit, normalize roundtrip) — total 20 tests passing
 - **Flutter analyze**: 1 info only (pre-existing `use_build_context_synchronously` in checkout)
+
+### ✅ Validation (2026-08-25, session 7)
+- `flutter analyze` — 1 info only (`use_build_context_synchronously` in checkout, pre-existing)
+- `flutter test` — PASS (22 tests)
 
 ### ✅ Validation (2026-08-25, session 6)
 - `flutter analyze` — 1 info only (`use_build_context_synchronously` in checkout, pre-existing)

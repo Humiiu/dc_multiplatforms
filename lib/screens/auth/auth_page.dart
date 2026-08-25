@@ -319,13 +319,13 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                   _buildInputField(
                     controller: _phoneCtrl,
                     label: 'Nomor Telepon',
-                    hintText: '8999-107-194',
+                    hintText: '',
                     keyboardType: TextInputType.phone,
                     prefixIcon: null,
                     fieldKey: 'phone',
                     digitsOnly: true,
                     formatters: [PhoneInputFormatter()],
-                    leadingText: null,
+                    leadingText: '+62 ',
                     onChanged: (_) {
                       // Clear stale global error while typing once format is fixable
                       if (_errorMessage != null &&
