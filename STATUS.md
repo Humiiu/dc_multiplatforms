@@ -6,11 +6,11 @@
 **Tech Stack:** Flutter + Riverpod + Firebase Auth (Phone OTP) + Firebase Realtime Database + GoRouter  
 
 ## Git State
-- **Branch:** `master` (on commit `b57feaf`)
-- **Staged:** 23 files (documentation, models, services, screens, router)
-- **Modified (unstaged):** 28 files (includes staged files + additional modifications)
-- **Untracked:** 6 files (`STATUS.md`, `lib/core/constants.dart`, `lib/core/theme.dart`, `lib/models/menu.dart`, `lib/providers/auth_provider.dart`, `lib/screens/main_shell.dart`)
-- **Last commit message:** `.` (single dot — minimal/placeholder)
+- **Branch:** `master` (on commit `6ee4583`)
+- **Staged:** 37 files (all implementation + docs)
+- **Modified (unstaged):** 0
+- **Untracked:** 0
+- **Last commit:** `Implement complete catering booking app UI per Figma design`
 
 ## Implementation Status
 
@@ -53,6 +53,11 @@
 - **Widget test** — Basic smoke test only; needs comprehensive widget tests
 - **Minor lint warnings:** Unused imports in auth_page, build_context_sync in checkout_page (acceptable)
 
+### ✅ Just Completed (session 4, 2026-08-25): Git staging + commit
+- **All 37 files staged and committed** (`6ee4583`) — clean working tree
+- Includes: all screens, services, models, providers, theme, constants, assets, docs, CI
+- Working tree now clean (0 unstaged, 0 untracked)
+
 ### ✅ Validation (2026-08-25, session 3)
 - `flutter analyze` — 1 info only (`use_build_context_synchronously` in checkout, pre-existing, non-fatal)
 - `flutter test` — PASS (11 tests: 10 phone normalization + 1 app smoke test)
@@ -86,25 +91,11 @@
 - **Type fixes:** `onFieldSubmitted` typed as `ValueChanged<String>?`; all call-sites updated
 
 ### ⏳ Untracked / Uncommitted Work (Ready to Stage)
-- `lib/core/constants.dart` — AppConstants, hariKerja, hariKerjaDb, jurusanOptions, kelasOptions
-- `lib/core/theme.dart` — Complete design system (AppColors, AppRadius, AppShadows, AppTextStyles, AppSpacing, buildAppTheme)
-- `lib/models/menu.dart` — MenuItem model
-- `lib/models/user.dart` — Updated with username, Jurusan/Kelas enums
-- `lib/models/order.dart` — Updated with PaymentMethod enum, weekLabel, isOverdue
-- `lib/screens/main_shell.dart` — Bottom navbar with NavigationBar
-- `lib/providers/auth_provider.dart` — Complete auth providers
-- `lib/services/auth_service.dart` — OTP flow, register, login, password update
-- `lib/services/database_service.dart` — CRUD + username/phone uniqueness checks
-- `lib/screens/auth/auth_page.dart` — Complete Login/Register with OTP
-- `lib/screens/home/home_page.dart` — Dashboard with all Figma components
-- `lib/screens/order/order_page.dart` — Select Days, menus, cart, hutang/bayar
-- `lib/screens/checkout/checkout_page.dart` — Summary, payment methods, QRIS timer
-- `lib/screens/history/history_page.dart` — Weekly grouping, pay unpaid button
-- `lib/screens/profile/profile_page.dart` — Profile info, action cards, logout
+- None — working tree is clean
 
 ## Next Tasks
-1. **Stage all implementation files** — Add all new/modified files to git
-2. **Add `image_picker` dependency** — For profile photo upload feature
+1. **Add `image_picker` dependency** — For profile photo upload feature
+2. **Implement profile photo upload** — `image_picker` + Firebase Storage
 3. **Implement Midtrans Cloud Function** — For real QRIS payment integration
 4. **Add comprehensive widget tests** — For all screens
 5. **Configure Firebase for production** — google-services.json, GoogleService-Info.plist
