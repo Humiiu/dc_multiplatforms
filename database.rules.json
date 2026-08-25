@@ -6,6 +6,18 @@
         ".write": "auth != null && auth.uid === $uid"
       }
     },
+    "usernames": {
+      ".read": "auth != null",
+      "$username": {
+        ".write": "auth != null && !data.exists()"
+      }
+    },
+    "phones": {
+      ".read": "auth != null",
+      "$phone": {
+        ".write": "auth != null && !data.exists()"
+      }
+    },
     "menus": {
       ".read": true,
       ".write": false

@@ -11,7 +11,13 @@ class DatabaseService {
 
   // ---------- USER ----------
   Future<void> setUser(String uid, AppUser user) async {
-    await _root.child('users').child(uid).set(user.toMap());
+    // Write user data + lookup indexes in one batch
+    final updates = <String, dynamic>{
+      'users/$uid': user.toMap(),
+      'usernames/${user.username}': {'uid': uid},
+      'phones/${user.phone}': {'uid': uid},
+    };
+    await _root.update(updates);
   }
 
   Future<AppUser?> getUser(String uid) async {
@@ -25,52 +31,46 @@ class DatabaseService {
     await _root.child('users').child(uid).update(data);
   }
 
-  /// Check if username is already taken
+  /// Check if username is already taken (via lookup index)
   Future<bool> isUsernameTaken(String username) async {
-    final snap = await _root
-        .child('users')
-        .orderByChild('username')
-        .equalTo(username)
-        .get();
+    final snap = await _root.child('usernames').child(username).get();
     return snap.exists;
   }
 
-  /// Check if phone is already registered
+  /// Check if phone is already registered (via lookup index)
   Future<bool> isPhoneRegistered(String phone) async {
-    final snap = await _root
-        .child('users')
-        .orderByChild('phone')
-        .equalTo(phone)
-        .get();
+    final snap = await _root.child('phones').child(phone).get();
     return snap.exists;
   }
 
-  /// Look up user by username
+  /// Look up user by username via /usernames lookup index
   Future<AppUser?> getUserByUsername(String username) async {
-    final snap = await _root
-        .child('users')
-        .orderByChild('username')
-        .equalTo(username)
-        .get();
-    if (!snap.exists || snap.value == null) return null;
-    final map = snap.value as Map;
-    if (map.isEmpty) return null;
-    final entry = map.entries.first;
-    return AppUser.fromMap(entry.key as String, entry.value as Map);
+    try {
+      final snap = await _root.child('usernames').child(username).get();
+      if (!snap.exists || snap.value == null) return null;
+      final data = snap.value as Map;
+      final uid = data['uid'] as String?;
+      if (uid == null || uid.isEmpty) return null;
+      return getUser(uid);
+    } catch (e) {
+      debugPrint('[DatabaseService] getUserByUsername error: $e');
+      return null;
+    }
   }
 
-  /// Look up user by phone number (normalized +62 format)
+  /// Look up user by phone number via /phones lookup index
   Future<AppUser?> getUserByPhone(String phone) async {
-    final snap = await _root
-        .child('users')
-        .orderByChild('phone')
-        .equalTo(phone)
-        .get();
-    if (!snap.exists || snap.value == null) return null;
-    final map = snap.value as Map;
-    if (map.isEmpty) return null;
-    final entry = map.entries.first;
-    return AppUser.fromMap(entry.key as String, entry.value as Map);
+    try {
+      final snap = await _root.child('phones').child(phone).get();
+      if (!snap.exists || snap.value == null) return null;
+      final data = snap.value as Map;
+      final uid = data['uid'] as String?;
+      if (uid == null || uid.isEmpty) return null;
+      return getUser(uid);
+    } catch (e) {
+      debugPrint('[DatabaseService] getUserByPhone error: $e');
+      return null;
+    }
   }
 
   // ---------- MENU ----------

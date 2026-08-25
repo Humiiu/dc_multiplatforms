@@ -303,15 +303,13 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                         padding: EdgeInsets.zero,
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      child: Text(
-                        'Lupa password?',
-                        style: AppTextStyles.caption.copyWith(
+                        textStyle: AppTextStyles.caption.copyWith(
                           color: AppColors.primary,
                           fontWeight: FontWeight.w500,
                           fontSize: 12,
                         ),
                       ),
+                      child: const Text('Lupa password?'),
                     ),
                   ),
                 ] else if (!_codeSent && _isRegistering) ...[
