@@ -6,11 +6,11 @@
 **Tech Stack:** Flutter + Riverpod + Firebase Auth (Phone OTP) + Firebase Realtime Database + GoRouter  
 
 ## Git State
-- **Branch:** `master` (on commit `68dad38`)
+- **Branch:** `master` (on commit `e1e23f9`)
 - **Staged:** 0
-- **Modified (unstaged):** 7 files (auth_page, auth_service, database_service, database.rules.json, history_page, logo_widget, order_page, phone_normalization_test)
-- **Untracked:** 0
-- **Last commit:** `Fix duplicated session 3 notes in STATUS.md`
+- **Modified (unstaged):** 3 (STATUS.md, profile_page.dart, pubspec.yaml)
+- **Untracked:** 1 (image_upload_service.dart)
+- **Last commit:** `e1e23f9 ai pler`
 
 ## Implementation Status
 
@@ -26,7 +26,7 @@
 - **Order page:** Select Days section at top with animated day chips, expandable menu sections per selected day with add/remove animation, bottom total bar with Hutang (max 100k, jatuh tempo Jumat) and Bayar Sekarang options
 - **Checkout page:** Order summary card, payment method selection (QRIS with 5-min timer, Virtual Account placeholder, E-Wallet placeholder, Hutang), QRIS bottom sheet with countdown timer and simulated payment flow
 - **History page:** Orders grouped by week (Minggu 1 Oktober, etc.), each order shows date-time, payment method, total, status badge (Lunas/Hutang), overdue indicator, "Bayar Hutang Minggu Ini" button for unpaid weeks
-- **Profile page:** Profile photo with edit badge, username, phone, jurusan, kelas display, action cards for Edit PFP, Ubah Password, Hubungi Admin, logout with confirmation
+- **Profile page:** Profile photo with edit badge, username, phone, jurusan, kelas display, action cards for Ganti Foto Profil (gallery/camera picker → Firebase Storage upload → DB update), Ubah Password, Hubungi Admin, logout with confirmation
 - **UI Design System:** Complete Material 3 theme with maroon/gold palette from Figma
   - Colors: primary #9E003A, primaryDark #740028, secondary #FFF0CA, accent #FFE5B9, background #FFF8F3
   - Gradients: Primary (gold→maroon), TagihanBg, ImageOverlay
@@ -48,7 +48,7 @@
 
 ### ⚠️ Known Issues / TODOs
 - **Checkout page:** Midtrans payment integration is mock (QRIS simulated with timer, Bank/VA/E-Wallet placeholders)
-- **Profile photo upload** — Placeholder edit badge; needs `image_picker` + Firebase Storage upload
+- **Profile photo upload** — UI wired up and functional on mobile/desktop; web shows "belum tersedia" (dart:io limitation)
 - **Midtrans integration** — Needs Cloud Function for Snap tokens + webhook verification
 - **Widget test** — Basic smoke test only; needs comprehensive widget tests
 - **Minor lint warnings:** Unused imports in auth_page, build_context_sync in checkout_page (acceptable)
@@ -57,6 +57,14 @@
 - **All 37 files staged and committed** (`6ee4583`) — clean working tree
 - Includes: all screens, services, models, providers, theme, constants, assets, docs, CI
 - Working tree now clean (0 unstaged, 0 untracked)
+
+### ✅ Just Completed (session 11, 2026-08-26): Profile photo upload — wired up
+- **`image_upload_service.dart` created**: picks image (gallery/camera) via `image_picker`, uploads to Firebase Storage at `profile_photos/{uid}.jpg`, returns download URL. `kIsWeb` guard prevents `dart:io` File calls on web.
+- **`profile_page.dart` updated**: "Ganti Foto Profil" button now shows source picker bottom sheet → uploads → saves `photoUrl` to DB via `updateUser()` → invalidates `userDataProvider` → shows success SnackBar. Loading spinner shown during upload. Web shows "belum tersedia" message.
+- **`_ActionCard` widget updated**: `onTap` nullable, new `trailing` param (used for loading spinner instead of chevron).
+- **Removed unused `dart:io` import** from `profile_page.dart` (was causing warning).
+- **Dependencies already present**: `image_picker: ^1.0.7`, `firebase_storage: ^11.6.0` in `pubspec.yaml`.
+- **`AppUser.photoUrl`** field already in model + `toMap`/`fromMap`/`copyWith`.
 
 ### ✅ Just Completed (session 10, 2026-08-25): Fix Android compatibility
 - **compileSdk/targetSdk** (`android/app/build.gradle`): set to `35` (stable, matches installed `android-35`)
@@ -106,6 +114,10 @@
 - `flutter analyze` — 1 info only (`use_build_context_synchronously` in checkout, pre-existing)
 - `flutter test` — PASS (22 tests)
 - `flutter build apk --debug` — SUCCESS
+
+### ✅ Validation (2026-08-26, session 11)
+- `flutter analyze` — 1 info only (`use_build_context_synchronously` in checkout, pre-existing)
+- `flutter test` — PASS (22 tests)
 
 ### ✅ Validation (2026-08-25, session 9)
 - `flutter analyze` — 1 info only (`use_build_context_synchronously` in checkout, pre-existing)
@@ -160,33 +172,99 @@
 - **Type fixes:** `onFieldSubmitted` typed as `ValueChanged<String>?`; all call-sites updated
 
 ### ⏳ Untracked / Uncommitted Work (Ready to Stage)
-- None — working tree is clean
+- `lib/services/image_upload_service.dart` — new file (profile photo upload service)
+- `lib/screens/profile/profile_page.dart` — modified (wired up photo upload)
+- `pubspec.yaml` — modified (`image_picker`, `firebase_storage` deps added)
+- `STATUS.md` — modified (this session)
+
+### ✅ Just Completed (session 13, 2026-08-27): ULTIMATE Bug Hunt & Cleanup
+- **Architectural Cleanup:**
+  - **Shared Providers**: Created `lib/providers/user_provider.dart` and `lib/providers/order_provider.dart` to consolidate duplicated logic and facilitate state invalidation across screens.
+  - **Checkout Refactor**: Created `lib/providers/checkout_provider.dart` and `lib/models/cart_item.dart`. `CheckoutPage` now supports both new orders and paying off existing debt (Hutang) from the dashboard or history.
+- **Bug Fixes:**
+  - **Auth Robustness**: `AuthPage` now deletes the Firebase Auth account if Realtime DB registration fails, preventing orphaned accounts.
+  - **Memory Leaks**: Added `controller.dispose()` in `ProfilePage` password change dialog.
+  - **State Invalidation**: Create/Pay operations now properly trigger `ref.invalidate()` for `tagihanProvider` and `ordersProvider`, ensuring the UI reflects changes immediately.
+  - **Async/Context Guards**: Added `context.mounted` checks to all async callbacks to satisfy `use_build_context_synchronously` lint and prevent crashes.
+  - **Data Safety**: Models now handle invalid/null data gracefully with fallbacks (e.g., bad Jurusan/Kelas/PaymentMethod).
+- **Purge Unused Items:**
+  - Removed unused dependencies: `cloud_functions`, `cached_network_image`.
+  - Removed unused providers: `authStateChangesProvider`, `isAuthenticatedProvider`, `registrationFormProvider`.
+  - Cleaned up unused imports and variables across the entire project.
+- **UI/UX Polish:**
+  - Added loading indicator to Hutang confirmation in `OrderPage`.
+  - Moved hardcoded error strings to `AppConstants`.
+  - Fixed Tagihan payment flow: "Bayar Sekarang" from dashboard now correctly loads unpaid orders into checkout.
+
+### ✅ Just Completed (session 14, 2026-08-30): Web + Admin Panel
+- **Role system added** (`lib/models/user.dart`): new `UserRole` enum (`user`/`admin`) with extension + `AppUser.role` field, `isAdmin` getter, full fromMap/toMap/copyWith serialization (defaults to `user`).
+- **Admin DB queries** (`lib/services/database_service.dart`): `getAllOrders()`, `getAllUsers()`, `updateOrderPaidStatus(orderId, isPaid)` (toggles `isPaid` + `paidAt`), `deleteMenuItem(day, menuId)`. `markPaid()` now also writes `paidAt`.
+- **Admin providers** (`lib/providers/admin_provider.dart`): `currentUserRoleProvider`, `isAdminProvider`, `adminOrdersProvider`, `adminUsersProvider`, `adminMenuProvider`, plus an `AdminRoleCache` for the sync route guard.
+- **Global Riverpod container** (`lib/main.dart`): created `appContainer` + `UncontrolledProviderScope` so the GoRouter redirect can read admin role synchronously.
+- **Routing** (`lib/router.dart`): added `/admin/{dashboard,menu,orders,users}` under an `AdminShell`; redirect route-guard sends non-admin users to `/home`.
+- **Admin Shell** (`lib/screens/admin/admin_shell.dart`): desktop (≥900px) shows fixed left sidebar + content; small screens use AppBar + bottom NavigationBar.
+- **Admin pages** (`lib/screens/admin/`):
+  - `admin_dashboard_page.dart`: stat cards (pendapatan masuk, utang aktif, total pesanan, pesanan hari ini) + recent orders list.
+  - `admin_menu_page.dart`: weekly menu CRUD (day selector chips, add/edit/delete item dialog with name/price/image URL).
+  - `admin_orders_page.dart`: all-orders table (desktop) / cards (mobile), Lunas-Hutang filter, per-order paid toggle.
+  - `admin_users_page.dart`: student list/table with per-user active-debt (non-admin only).
+- **Profile entry point** (`lib/screens/profile/profile_page.dart`): "Panel Admin" card shown only when `isAdminProvider` → navigates to `/admin/dashboard`.
+- **Firebase rules** (`database.rules.json`): admins can read all `/users`, write `/menus`, and read/write all `/orders`; regular users unchanged. (Must be deployed to Firebase Console.)
+- **Tests** (`test/user_role_test.dart`): 11 new tests for `UserRoleExtension` + `AppUser` role serialization.
 
 ## Next Tasks
-1. **Deploy Firebase Realtime Database rules** — Copy `database.rules.json` to Firebase Console (Realtime Database → Rules) to add `.indexOn: ["userId"]` for `/orders`
-2. **Add `image_picker` dependency** — For profile photo upload feature
-3. **Implement profile photo upload** — `image_picker` + Firebase Storage
-4. **Implement Midtrans Cloud Function** — For real QRIS payment integration
-5. **Add comprehensive widget tests** — For all screens (auth, home, order, checkout, history, profile)
-6. **Configure Firebase for production** — google-services.json, GoogleService-Info.plist
-
-## Manual Firebase Config Required
-The file `database.rules.json` has been created in the project root with the correct rules including `.indexOn: ["userId"]` for `/orders`. To deploy:
-1. Open [Firebase Console](https://console.firebase.google.com) → your project → Realtime Database → Rules
-2. Paste the contents of `database.rules.json`
-3. Click "Publish"
-
-### ⚠️ Firebase Rules yang Harus Di-publish Manual
-File `database.rules.json` di root proyek berisi rules lengkap. Harus dipublish secara manual di Firebase Console:
-1. Buka Firebase Console → Realtime Database → Rules
-2. Copy-paste isi `database.rules.json`
-3. Klik Publish
-4. Rules meliputi: `/users/{uid}`, `/menus`, `/orders/{orderId}` dengan `.indexOn: ["userId"]`
+1. **Deploy Firebase Realtime Database rules** — Copy updated `database.rules.json` to Firebase Console (Realtime Database → Rules). ⚠️ The admin additions only work AFTER this is deployed.
+   *(in-progress web refactor: `lib/screens/web_shell.dart` top-nav + `lib/utils/formatters.dart` shared helpers now wired and compiling.)*
+2. **Promote a user to admin** — In Firebase Realtime DB set `users/{uid}/role` = `"admin"` for the catering manager account.
+3. **Run the web-first handoff** — Hand `GEMINI_WEB_HANDOFF.md` to Gemini to (a) build a bespoke web-user layout (top-nav shell on desktop, bottom-nav on phone browser), (b) verify/complete the admin panel, and (c) finish cleanup + optimization.
+4. **Midtrans Cloud Function** — For real QRIS payment integration.
+5. **Add comprehensive widget tests** — For all screens (auth, home, order, checkout, history, profile, admin).
 
 ## Validation Commands
 ```bash
-flutter analyze          # 1 info (acceptable)
-flutter pub get          # OK
-flutter test             # PASS
-flutter build apk        # Should work
+flutter analyze          # 0 errors, 0 warnings
+flutter test             # PASS (32 tests)
+flutter build apk --debug # Mobile build should succeed
+flutter build web --release # Web build → build/web ✅
 ```
+
+### ✅ Just Completed (session 17, 2026-08-30): Web-First UX + Final Polish
+- **Responsive Layout** (`lib/screens/web_shell.dart`): built a top-nav shell for desktop (>=900px) with centered max-width content area (1200px) and a "Panel Admin" shortcut; mobile browsers continue using the bottom-nav `MainShell`.
+- **Airtight Admin Guard** (`lib/providers/admin_provider.dart`, `lib/router.dart`): refactored `AdminRoleCache` to a `ChangeNotifier` and wired it as a `refreshListenable` to `GoRouter`. The guard now waits for user data to load on refresh instead of bouncing admins to `/home`.
+- **Shared Utilities** (`lib/utils/formatters.dart`): centralized `rupiah`, `date`, and `dateTime` formatting to eliminate logic duplication across admin and user pages.
+- **Improved UX** (`lib/widgets/error_widget.dart`): added a consistent `AppErrorWidget` with a "Coba Lagi" (Retry) button, integrated into Home, History, and all Admin pages for better failure recovery.
+- **Web Niceties**:
+  - Enabled **Path URL Strategy** (`lib/utils/configure_web.dart`): removed the `#` from browser URLs.
+  - Updated `index.html` and `manifest.json`: refined meta descriptions, PWA colors, and app titles.
+  - Fixed `ImageUploadService`: added web support using `readAsBytes()` + `putData()` for profile photos.
+- **Cleanup**: removed the empty `scratch/` directory and confirmed all 32 tests pass with 0 analyzer issues.
+
+## Next Tasks
+1. **Promote a user to admin** — In Firebase Realtime DB set `users/{uid}/role` = `"admin"`.
+2. **Midtrans Cloud Function** — For real QRIS payment integration.
+3. **Comprehensive widget tests** — For all screens including admin and responsive shells.
+
+## Validation Commands
+```bash
+flutter analyze          # 0 issues
+flutter test             # 32 pass
+flutter build web        # Build successful
+```
+
+### ✅ Just Completed (session 15, 2026-08-30): Cleanup + Gemini Web-First Handoff
+- **Deleted 5 dead/seed/dump files** (user-confirmed):
+  - `siswa.json` — UTF-16 export dump of student DB records (one-time migration source)
+  - `menus.json` — seed dump of `/menus`
+  - `init_db.json` — seed dump (same as menus, plus users/orders blocks)
+  - `scratch/migrate_siswa.dart` — one-time migration script reading `siswa.json`
+  - `settings.json` — unused manual config; `hargaKetringDefault`/`maxUtang` are hardcoded in `AppConstants`
+  - Verified: nothing in `lib/` referenced any of these. Removed from git index too (`scratch/` dir now empty).
+- **Created `GEMINI_WEB_HANDOFF.md`** — a full autonomous handoff prompt telling Gemini to:
+  - Build a **bespoke web-first user layout** (top-nav web shell on desktop, bottom-nav mobile shell on phone browsers; reuse existing screens/providers; PWA + deep-linking niceties).
+  - **Verify/complete the admin panel** and make the role guard airtight.
+  - **Continue cleanup** (unused deps like `intl`, empty dirs, dead scripts).
+  - **Optimize** (shared `_rupiah`/date helper, loading/error/retry states, string constants, query notes).
+  - Keep `flutter analyze`=0, tests green, and both web + apk building.
+- **Validation**: `flutter analyze` → **No issues found** (the 3 pre-existing `info` in scratch/ are gone with the deleted file). `flutter test` → **32 pass**. `flutter build web --release` ✅. `flutter build apk --debug` ✅.
+
+### ✅ Just Completed (session 14, 2026-08-30): Web + Admin Panel

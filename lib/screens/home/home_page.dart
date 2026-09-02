@@ -6,17 +6,14 @@ import '../../core/constants.dart';
 import '../../core/theme.dart';
 import '../../models/user.dart';
 import '../../models/menu.dart';
+import '../../models/cart_item.dart';
 import '../../services/database_service.dart';
 import '../../providers/auth_provider.dart';
-
-/// Provider tagihan aktif user (utang yang belum dibayar).
-final tagihanProvider = FutureProvider<int>((ref) async {
-  final db = ref.read(databaseServiceProvider);
-  final uid = ref.watch(currentUserIdProvider);
-  if (uid == null) return 0;
-  final orders = await db.getActiveOrders(uid);
-  return orders.fold(0, (sum, o) => o.totalPrice);
-});
+import '../../providers/user_provider.dart';
+import '../../providers/order_provider.dart';
+import '../../providers/checkout_provider.dart';
+import '../../utils/formatters.dart';
+import '../../widgets/error_widget.dart';
 
 /// Provider untuk menu mingguan
 final weeklyMenuProvider = FutureProvider<Map<String, List<MenuItem>>>((ref) async {
@@ -209,11 +206,6 @@ class _WelcomeHeader extends ConsumerWidget {
   }
 }
 
-// Helper to get user data for welcome header
-final userDataProvider = FutureProvider.family<AppUser?, String>((ref, uid) async {
-  return ref.read(databaseServiceProvider).getUser(uid);
-});
-
 class _TagihanCard extends ConsumerWidget {
   final AsyncValue<int> tagihanAsync;
   const _TagihanCard({required this.tagihanAsync});
@@ -329,17 +321,14 @@ class _TagihanCard extends ConsumerWidget {
                           Text('Rp', style: AppTextStyles.bodyMediumBold.copyWith(color: AppColors.textSecondary)),
                           const SizedBox(width: 4),
                           Text(
-                            total.toString().replaceAllMapped(
-                              RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-                              (m) => '${m[1]}.',
-                            ),
+                            AppFormatters.rupiah(total).replaceFirst('Rp ', ''),
                             style: AppTextStyles.priceLarge,
                           ),
                         ],
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Maks utang Rp ${(AppConstants.maxUtang / 1000).toInt()}rb',
+                        'Maks utang ${AppFormatters.rupiah(AppConstants.maxUtang)}',
                         style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
                       ),
                     ],
@@ -348,7 +337,29 @@ class _TagihanCard extends ConsumerWidget {
                 // Bayar Sekarang button - matches Figma: primary, radius 8, specific shadow
                 FilledButton(
                   onPressed: total > 0
-                      ? () => ref.read(goRouterProvider).go('/checkout')
+                      ? () async {
+                          final db = ref.read(databaseServiceProvider);
+                          final uid = ref.read(currentUserIdProvider);
+                          if (uid == null) return;
+                          
+                          // Show loading indicator or similar if needed
+                          final orders = await db.getActiveOrders(uid);
+                          
+                          final checkoutItems = orders.map((o) => CartItem(
+                            day: o.weekLabel,
+                            menuId: o.id,
+                            menuName: 'Tagihan ${o.weekLabel}',
+                            price: o.totalPrice,
+                            quantity: 1,
+                          )).toList();
+
+                          ref.read(checkoutProvider.notifier).state = CheckoutState(
+                            items: checkoutItems,
+                            total: total,
+                            existingOrderIds: orders.map((o) => o.id).toList(),
+                          );
+                          ref.read(goRouterProvider).go('/checkout');
+                        }
                       : null,
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primary,
@@ -391,7 +402,7 @@ class _TagihanCard extends ConsumerWidget {
         ),
         child: const Center(child: CircularProgressIndicator()),
       ),
-      error: (_, __) => Container(
+      error: (e, _) => Container(
         width: double.infinity,
         padding: const EdgeInsets.all(24),
         decoration: ShapeDecoration(
@@ -400,7 +411,10 @@ class _TagihanCard extends ConsumerWidget {
             borderRadius: BorderRadius.circular(AppRadius.xl),
           ),
         ),
-        child: Text('Gagal memuat tagihan', style: AppTextStyles.bodyMedium),
+        child: AppErrorWidget(
+          message: 'Gagal memuat tagihan',
+          onRetry: () => ref.invalidate(tagihanProvider),
+        ),
       ),
     );
   }
@@ -472,10 +486,13 @@ class _WeeklyMenuCarousel extends ConsumerWidget {
           itemBuilder: (_, __) => _MenuDayCardSkeleton(),
         ),
       ),
-      error: (_, __) => Container(
+      error: (e, _) => Container(
         height: 250,
         alignment: Alignment.center,
-        child: Text('Gagal memuat menu', style: AppTextStyles.bodyMedium),
+        child: AppErrorWidget(
+          message: 'Gagal memuat menu',
+          onRetry: () => ref.invalidate(weeklyMenuProvider),
+        ),
       ),
     );
   }
@@ -602,7 +619,7 @@ class _MenuDayCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       firstMenu != null
-                          ? 'Rp ${firstMenu!.price.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}'
+                          ? AppFormatters.rupiah(firstMenu!.price)
                           : '$menuCount menu tersedia',
                       style: AppTextStyles.bodySmall,
                     ),

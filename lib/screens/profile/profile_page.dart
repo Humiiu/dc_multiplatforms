@@ -1,18 +1,19 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants.dart';
 import '../../core/theme.dart';
 import '../../models/user.dart';
 import '../../services/database_service.dart';
-
-/// Mengambil data AppUser dari Realtime DB berdasarkan uid.
-/// null saat belum login / data belum ada di DB.
-final userDataProvider = FutureProvider.family<AppUser?, String>((ref, uid) async {
-  return ref.read(databaseServiceProvider).getUser(uid);
-});
+import '../../services/image_upload_service.dart';
+import '../../providers/user_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/order_provider.dart';
+import '../../providers/admin_provider.dart';
 
 /// Profil user: data kelas/jurusan, ganti foto (placeholder), ubah password,
 /// hubungi admin via WA.
@@ -24,10 +25,95 @@ class ProfilePage extends ConsumerStatefulWidget {
 }
 
 class _ProfilePageState extends ConsumerState<ProfilePage> {
+  bool _isUploading = false;
+
   @override
   void initState() {
     super.initState();
     // Data user dimuat reaktif via userDataProvider di build().
+  }
+
+  Future<void> _pickAndUploadPhoto() async {
+    if (kIsWeb) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Upload foto belum tersedia di web', style: AppTextStyles.bodyMedium),
+          backgroundColor: AppColors.textPrimary,
+        ),
+      );
+      return;
+    }
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    // Show source picker dialog
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: Text('Galeri', style: AppTextStyles.bodyMediumBold),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: Text('Kamera', style: AppTextStyles.bodyMediumBold),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (source == null || !mounted) return;
+
+    setState(() => _isUploading = true);
+
+    try {
+      final service = ImageUploadService();
+      final url = await service.pickAndUpload(source);
+
+      if (!mounted) return;
+
+      if (url == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal mengambil atau mengupload foto', style: AppTextStyles.bodyMedium),
+            backgroundColor: AppColors.error,
+          ),
+        );
+        return;
+      }
+
+      // Save URL to database
+      await ref.read(databaseServiceProvider).updateUser(user.uid, {'photoUrl': url});
+
+      // Invalidate provider so profile refreshes
+      ref.invalidate(userDataProvider(user.uid));
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Foto profil berhasil diubah', style: AppTextStyles.bodyMedium),
+          backgroundColor: AppColors.textPrimary,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e', style: AppTextStyles.bodyMedium),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
   }
 
   Future<void> _openAdminWhatsApp(BuildContext context) async {
@@ -50,56 +136,65 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
   Future<void> _changePassword(BuildContext context) async {
     final controller = TextEditingController();
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Ganti Password', style: AppTextStyles.sectionTitle),
-        content: TextField(
-          controller: controller,
-          obscureText: true,
-          style: AppTextStyles.inputText,
-          decoration: InputDecoration(
-            hintText: 'Password baru (min. 6 karakter)',
-            hintStyle: AppTextStyles.inputHint,
-          ),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text('Batal', style: AppTextStyles.button.copyWith(color: AppColors.primary))),
-          FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Simpan')),
-        ],
-      ),
-    );
-    if (ok != true || !context.mounted) return;
-
-    final pw = controller.text.trim();
-    if (pw.length < 6) return;
-
     try {
-      await FirebaseAuth.instance.currentUser?.updatePassword(pw);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Password berhasil diubah', style: AppTextStyles.bodyMedium),
-          backgroundColor: AppColors.textPrimary,
-        ),
-      );
-    } on FirebaseAuthException catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            e.code == 'requires-recent-login'
-                ? 'Login ulang dulu sebelum ganti password'
-                : 'Gagal: ${e.message}',
-            style: AppTextStyles.bodyMedium,
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Ganti Password', style: AppTextStyles.sectionTitle),
+          content: TextField(
+            controller: controller,
+            obscureText: true,
+            style: AppTextStyles.inputText,
+            decoration: InputDecoration(
+              hintText: 'Password baru (min. 6 karakter)',
+              hintStyle: AppTextStyles.inputHint,
+            ),
           ),
-          backgroundColor: AppColors.error,
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text('Batal', style: AppTextStyles.button.copyWith(color: AppColors.primary))),
+            FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Simpan')),
+          ],
         ),
       );
+      if (ok != true || !context.mounted) return;
+
+      final pw = controller.text.trim();
+      if (pw.length < 6) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Password minimal 6 karakter')),
+        );
+        return;
+      }
+
+      try {
+        await FirebaseAuth.instance.currentUser?.updatePassword(pw);
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Password berhasil diubah', style: AppTextStyles.bodyMedium),
+            backgroundColor: AppColors.textPrimary,
+          ),
+        );
+      } on FirebaseAuthException catch (e) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              e.code == 'requires-recent-login'
+                  ? 'Login ulang dulu sebelum ganti password'
+                  : 'Gagal: ${e.message}',
+              style: AppTextStyles.bodyMedium,
+            ),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      controller.dispose();
     }
   }
 
@@ -108,6 +203,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     final user = FirebaseAuth.instance.currentUser;
     final phone = user?.phoneNumber ?? '-';
     final userAsync = user == null ? null : ref.watch(userDataProvider(user.uid));
+    final isAdmin = ref.watch(isAdminProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -233,15 +329,15 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           _ActionCard(
             icon: Icons.image_outlined,
             title: 'Ganti Foto Profil',
-            subtitle: 'Upload foto dari galeri atau kamera',
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Fitur upload foto coming soon', style: AppTextStyles.bodyMedium),
-                  backgroundColor: AppColors.textPrimary,
-                ),
-              );
-            },
+            subtitle: _isUploading ? 'Mengupload...' : 'Upload foto dari galeri atau kamera',
+            trailing: _isUploading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : null,
+            onTap: _isUploading ? null : _pickAndUploadPhoto,
           ),
           const SizedBox(height: 12),
           _ActionCard(
@@ -251,6 +347,15 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             onTap: () => _changePassword(context),
           ),
           const SizedBox(height: 12),
+          if (isAdmin) ...[
+            _ActionCard(
+              icon: Icons.admin_panel_settings_outlined,
+              title: 'Panel Admin',
+              subtitle: 'Kelola menu, pesanan, dan siswa (website)',
+              onTap: () => context.go('/admin/dashboard'),
+            ),
+            const SizedBox(height: 12),
+          ],
           _ActionCard(
             icon: Icons.support_agent_outlined,
             title: 'Hubungi Admin / Buat Ticket',
@@ -297,6 +402,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 );
                 if (confirm == true && context.mounted) {
                   await FirebaseAuth.instance.signOut();
+                  
+                  // INVALIDATE all user-specific data
+                  ref.invalidate(currentUserIdProvider);
+                  ref.invalidate(tagihanProvider);
+                  ref.invalidate(ordersProvider);
+
                   if (context.mounted) context.go('/auth');
                 }
               },
@@ -363,13 +474,15 @@ class _ActionCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
+  final Widget? trailing;
 
   const _ActionCard({
     required this.icon,
     required this.title,
     required this.subtitle,
-    required this.onTap,
+    this.onTap,
+    this.trailing,
   });
 
   @override
@@ -411,7 +524,7 @@ class _ActionCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 24),
+              trailing ?? Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 24),
             ],
           ),
         ),

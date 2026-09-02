@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Design tokens extracted from Figma export (D:\download\tes\flutter.txt).
-/// Color palette, gradients, typography, shadows, radius, spacing.
 class AppColors {
   // Surfaces
   static const background = Color(0xFFFFF8F3); // cream

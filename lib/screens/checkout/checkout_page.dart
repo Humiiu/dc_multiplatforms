@@ -3,8 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme.dart';
 import '../../models/order.dart';
+import '../../models/cart_item.dart';
 import '../../services/database_service.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/order_provider.dart';
+import '../../providers/checkout_provider.dart';
+import '../../utils/formatters.dart';
 import '../order/order_page.dart';
 
 /// Halaman checkout: ringkasan pesanan + pilih metode bayar.
@@ -48,61 +52,87 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
   }
 
   Future<void> _confirm() async {
-    final cart = ref.read(cartProvider);
-    if (_selectedMethod == null || cart.isEmpty) return;
+    final checkoutState = ref.read(checkoutProvider);
+    if (_selectedMethod == null || checkoutState == null || checkoutState.items.isEmpty) return;
 
     setState(() => _submitting = true);
     try {
-      // Susun data order dari keranjang.
-      final days = cart.map((c) => c.day).toSet().toList();
-      final menuPerDay = <String, List<String>>{};
-      for (final item in cart) {
-        (menuPerDay[item.day] ??= <String>[]).add(item.menuId);
+      final db = ref.read(databaseServiceProvider);
+      
+      Order? finalOrder;
+
+      if (checkoutState.isPayingExistingDebt) {
+        // Mark existing orders as paid
+        for (final orderId in checkoutState.existingOrderIds!) {
+          await db.markPaid(orderId);
+        }
+        // In this case, we don't have a "new" Order object for the QRIS sheet directly,
+        // but we can create a dummy one or fetch the first one.
+        // For simulation, we'll create a summary order.
+        finalOrder = Order(
+          id: 'payoff',
+          userId: ref.read(currentUserIdProvider) ?? '',
+          selectedDays: ['Riwayat'],
+          menuPerDay: {},
+          totalPrice: checkoutState.total,
+          isPaid: true, // Will be true after payoff
+          paymentMethod: _selectedMethod!,
+          createdAt: DateTime.now(),
+        );
+      } else {
+        // Susun data order dari keranjang.
+        final cart = checkoutState.items;
+        final days = cart.map((c) => c.day).toSet().toList();
+        final menuPerDay = <String, List<String>>{};
+        for (final item in cart) {
+          (menuPerDay[item.day] ??= <String>[]).addAll(List.filled(item.quantity, item.menuId));
+        }
+        final total = checkoutState.total;
+        final now = DateTime.now();
+
+        finalOrder = Order(
+          id: '', // Will be assigned by Firebase push()
+          userId: ref.read(currentUserIdProvider) ?? '',
+          selectedDays: days,
+          menuPerDay: menuPerDay,
+          totalPrice: total,
+          isPaid: false, // Will be updated after payment
+          paymentMethod: _selectedMethod!,
+          createdAt: now,
+          // Due date: Friday of this week
+          dueDate: now.add(Duration(days: (DateTime.friday - now.weekday) % 7)),
+        );
+
+        await db.createOrder(finalOrder);
       }
-      final total = cart.fold(0, (sum, item) => sum + item.price);
-      final now = DateTime.now();
 
-      final order = Order(
-        id: '',
-        userId: ref.read(currentUserProvider)?.uid ?? '',
-        selectedDays: days,
-        menuPerDay: menuPerDay,
-        totalPrice: total,
-        isPaid: false, // Will be updated after payment
-        paymentMethod: _selectedMethod!,
-        createdAt: now,
-        // Due date: Friday of this week (weekday 5 = Friday, Monday = 1)
-        dueDate: now.add(Duration(days: (5 - now.weekday) % 7)),
-      );
-
-      await ref.read(databaseServiceProvider).createOrder(order);
+      // INVALIDATE: Ensure dashboard and history update
+      ref.invalidate(tagihanProvider);
+      ref.invalidate(ordersProvider);
 
       // Clear cart
       ref.read(cartProvider.notifier).state = [];
       ref.read(selectedDaysProvider.notifier).state = {};
+      // Clear checkout state
+      ref.read(checkoutProvider.notifier).state = null;
 
       if (!mounted) return;
 
       if (_selectedMethod == PaymentMethod.qris) {
-        // Show QRIS bottom sheet with timer
-        _showQrisSheet(context, order);
-      } else if (_selectedMethod == PaymentMethod.hutang) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Pesanan hutang dibuat', style: AppTextStyles.bodyMedium),
-            backgroundColor: AppColors.textPrimary,
-          ),
-        );
-        context.go('/home');
+        _showQrisSheet(context, finalOrder);
       } else {
-        // Bank/VA/E-wallet - placeholder
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${_selectedMethod!.label} - Coming soon', style: AppTextStyles.bodyMedium),
-            backgroundColor: AppColors.textPrimary,
-          ),
-        );
-        context.go('/home');
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(checkoutState.isPayingExistingDebt 
+                  ? 'Tagihan berhasil dibayar' 
+                  : 'Pesanan berhasil dibuat', 
+                style: AppTextStyles.bodyMedium),
+              backgroundColor: AppColors.textPrimary,
+            ),
+          );
+          context.go('/home');
+        }
       }
     } catch (e) {
       if (!mounted) return;
@@ -132,12 +162,12 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
         onClose: () {
           _stopQrTimer();
           Navigator.pop(context);
-          context.go('/home');
+          if (context.mounted) context.go('/home');
         },
         onPaid: () {
           _stopQrTimer();
           Navigator.pop(context);
-          context.go('/home');
+          if (context.mounted) context.go('/home');
         },
       ),
     );
@@ -145,8 +175,18 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
 
   @override
   Widget build(BuildContext context) {
-    final cart = ref.watch(cartProvider);
-    final total = cart.fold(0, (sum, item) => sum + item.price);
+    final checkoutState = ref.watch(checkoutProvider);
+    
+    // Fallback if checkoutState is null (shouldn't happen if flow is correct)
+    if (checkoutState == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Checkout')),
+        body: const Center(child: Text('Checkout state empty')),
+      );
+    }
+
+    final items = checkoutState.items;
+    final total = checkoutState.total;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -164,23 +204,20 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
         padding: const EdgeInsets.all(16),
         children: [
           // ---- Order Summary Card ----
-          _OrderSummaryCard(cart: cart, total: total),
+          _OrderSummaryCard(cart: items, total: total),
           const SizedBox(height: 24),
 
           // ---- Payment Method Selection ----
           Text('Metode Pembayaran', style: AppTextStyles.sectionTitle),
           const SizedBox(height: 16),
-          ...PaymentMethod.values.map((method) => _PaymentMethodCard(
+          ...PaymentMethod.values
+              .where((m) => checkoutState.isPayingExistingDebt ? m != PaymentMethod.hutang : true)
+              .map((method) => _PaymentMethodCard(
                 method: method,
                 isSelected: _selectedMethod == method,
                 onTap: () {
                   setState(() {
                     _selectedMethod = method;
-                    if (method == PaymentMethod.qris) {
-                      _startQrTimer();
-                    } else {
-                      _stopQrTimer();
-                    }
                   });
                 },
               )),
@@ -191,7 +228,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
             width: double.infinity,
             height: 56,
             child: FilledButton(
-              onPressed: (_selectedMethod == null || _submitting || cart.isEmpty) ? null : _confirm,
+              onPressed: (_selectedMethod == null || _submitting || items.isEmpty) ? null : _confirm,
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
@@ -269,13 +306,13 @@ class _OrderSummaryCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(item.menuName, style: AppTextStyles.bodyMediumBold),
+                          Text('${item.menuName} x${item.quantity}', style: AppTextStyles.bodyMediumBold),
                           Text(item.day.capitalize(), style: AppTextStyles.caption),
                         ],
                       ),
                     ),
                     Text(
-                      'Rp ${item.price.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}',
+                      AppFormatters.rupiah(item.price * item.quantity),
                       style: AppTextStyles.bodyMediumBold.copyWith(color: AppColors.primary),
                     ),
                   ],
@@ -287,7 +324,7 @@ class _OrderSummaryCard extends StatelessWidget {
             children: [
               Text('Total Tagihan', style: AppTextStyles.bodyMediumBold.copyWith(color: AppColors.primary)),
               Text(
-                'Rp ${total.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}',
+                AppFormatters.rupiah(total),
                 style: AppTextStyles.priceMedium,
               ),
             ],
@@ -456,20 +493,40 @@ class _QrisPaymentSheet extends StatefulWidget {
   State<_QrisPaymentSheet> createState() => _QrisPaymentSheetState();
 }
 
-class _QrisPaymentSheetState extends State<_QrisPaymentSheet> with TickerProviderStateMixin {
+class _QrisPaymentSheetState extends State<_QrisPaymentSheet> with TickerProviderStateMixin, WidgetsBindingObserver {
   late AnimationController _timerController;
   int _remainingSeconds = 300;
   bool _isPaid = false;
+  DateTime? _backgroundTime;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _remainingSeconds = widget.timerSeconds;
     _timerController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 1),
     )..addListener(_onTimerTick);
     _timerController.repeat();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      _backgroundTime = DateTime.now();
+    } else if (state == AppLifecycleState.resumed) {
+      if (_backgroundTime != null) {
+        final diff = DateTime.now().difference(_backgroundTime!).inSeconds;
+        setState(() {
+          _remainingSeconds = (_remainingSeconds - diff).clamp(0, 300);
+        });
+        widget.onTimerTick(_remainingSeconds);
+        if (_remainingSeconds <= 0) {
+          _handleTimeout();
+        }
+      }
+    }
   }
 
   void _onTimerTick() {
@@ -484,33 +541,37 @@ class _QrisPaymentSheetState extends State<_QrisPaymentSheet> with TickerProvide
 
   void _handleTimeout() {
     if (mounted) {
+      _timerController.stop();
       setState(() => _isPaid = false);
-      // Show timeout dialog
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          title: Text('Waktu Habis', style: AppTextStyles.sectionTitle),
-          content: Text(
-            'QRIS telah kedaluwarsa. Silakan buat pesanan baru.',
-            style: AppTextStyles.bodyMedium,
-          ),
-          actions: [
-            FilledButton(
-              onPressed: () {
-                Navigator.pop(context);
-                widget.onClose();
-              },
-              child: Text('OK', style: AppTextStyles.button),
+      // Show timeout dialog if not already shown
+      if (ModalRoute.of(context)?.isCurrent == true) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: Text('Waktu Habis', style: AppTextStyles.sectionTitle),
+            content: Text(
+              'QRIS telah kedaluwarsa. Silakan buat pesanan baru.',
+              style: AppTextStyles.bodyMedium,
             ),
-          ],
-        ),
-      );
+            actions: [
+              FilledButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  widget.onClose();
+                },
+                child: Text('OK', style: AppTextStyles.button),
+              ),
+            ],
+          ),
+        );
+      }
     }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _timerController.dispose();
     super.dispose();
   }
@@ -612,7 +673,7 @@ class _QrisPaymentSheetState extends State<_QrisPaymentSheet> with TickerProvide
           ),
           const SizedBox(height: 4),
           Text(
-            'Rp ${widget.order.totalPrice.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}',
+            AppFormatters.rupiah(widget.order.totalPrice),
             style: AppTextStyles.priceLarge,
           ),
           const SizedBox(height: 24),
@@ -666,9 +727,10 @@ class _QrisPaymentSheetState extends State<_QrisPaymentSheet> with TickerProvide
                           setState(() => _isPaid = true);
                           _timerController.stop();
                           Future.delayed(const Duration(milliseconds: 500), () {
-                            if (mounted) {
-                              widget.onPaid();
-                              // Show snackbar using root navigator
+                            if (!mounted) return;
+                            widget.onPaid();
+                            // Show snackbar using root navigator
+                            if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Text('Pembayaran berhasil!', style: AppTextStyles.bodyMedium),

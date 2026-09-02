@@ -48,8 +48,8 @@ class AuthService {
       throw Exception('Akun tidak ditemukan. Silakan daftar terlebih dahulu.');
     }
 
-    // Use UID-based email format for Firebase auth
-    final email = '$uid@catering.app';
+    // New Format: phone-based email
+    final email = '${phone.replaceAll('+', '')}@catering.app';
     final userCredential = await _auth.signInWithEmailAndPassword(
       email: email,
       password: password,

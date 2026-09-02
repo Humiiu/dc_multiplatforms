@@ -4,8 +4,13 @@ import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme.dart';
 import '../../models/order.dart';
-import '../../services/database_service.dart';
+import '../../models/cart_item.dart';
+import '../../providers/order_provider.dart';
+import '../../providers/checkout_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/database_service.dart';
+import '../../utils/formatters.dart';
+import '../../widgets/error_widget.dart';
 
 /// Riwayat pesanan, dikelompokkan per minggu dengan status lunas/utang.
 class HistoryPage extends ConsumerWidget {
@@ -13,9 +18,7 @@ class HistoryPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final db = ref.read(databaseServiceProvider);
-    final uid = ref.watch(currentUserIdProvider);
-    final ordersFuture = uid != null ? db.getUserOrders(uid) : Future.value(<Order>[]);
+    final ordersAsync = ref.watch(ordersProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -25,73 +28,72 @@ class HistoryPage extends ConsumerWidget {
         elevation: 0,
         centerTitle: true,
       ),
-      body: FutureBuilder<List<Order>>(
-        future: ordersFuture,
-        builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snap.hasError) {
-            return _EmptyHistoryState();
-          }
-          final orders = snap.data ?? [];
-          if (orders.isEmpty) {
-            return _EmptyHistoryState();
-          }
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(ordersProvider);
+        },
+        child: ordersAsync.when(
+          data: (orders) {
+            if (orders.isEmpty) {
+              return _EmptyHistoryState();
+            }
 
-          // Terbaru dulu, lalu kelompokkan per minggu.
-          orders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-          final grouped = <String, List<Order>>{};
-          for (final o in orders) {
-            final weekKey = o.weekLabel;
-            (grouped[weekKey] ??= []).add(o);
-          }
+            // Terbaru dulu, lalu kelompokkan per minggu.
+            final sortedOrders = List<Order>.from(orders)
+              ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+            
+            final grouped = <String, List<Order>>{};
+            for (final o in sortedOrders) {
+              final weekKey = o.weekLabel;
+              (grouped[weekKey] ??= []).add(o);
+            }
 
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: grouped.entries.map((entry) {
-              final weekTotal = entry.value.fold(0, (sum, o) => sum + o.totalPrice);
-              final hasUnpaid = entry.value.any((o) => !o.isPaid);
+            return ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              children: grouped.entries.map((entry) {
+                final weekTotal = entry.value.fold(0, (sum, o) => sum + o.totalPrice);
+                final hasUnpaid = entry.value.any((o) => !o.isPaid);
 
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Week header with total
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(entry.key, style: AppTextStyles.sectionTitle.copyWith(fontSize: 20)),
-                      Text(
-                        'Total: Rp ${_formatPrice(weekTotal)}',
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Week header with total
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(entry.key, style: AppTextStyles.sectionTitle.copyWith(fontSize: 20)),
+                        Text(
+                        'Total: ${AppFormatters.rupiah(weekTotal)}',
                         style: AppTextStyles.bodyMediumBold.copyWith(color: AppColors.primary),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  ...entry.value.map((o) => _OrderCard(order: o)),
-                  if (hasUnpaid) ...[
-                    const SizedBox(height: 12),
-                    _PayUnpaidButton(
-                      weekKey: entry.key,
-                      total: entry.value.where((o) => !o.isPaid).fold(0, (sum, o) => sum + o.totalPrice),
+                      ],
                     ),
+                    const SizedBox(height: 12),
+                    ...entry.value.map((o) => _OrderCard(order: o)),
+                    if (hasUnpaid) ...[
+                      const SizedBox(height: 12),
+                      _PayUnpaidButton(
+                        weekKey: entry.key,
+                        total: entry.value.where((o) => !o.isPaid).fold(0, (sum, o) => sum + o.totalPrice),
+                      ),
+                    ],
+                    const SizedBox(height: 24),
                   ],
-                  const SizedBox(height: 24),
-                ],
-              );
-            }).toList(),
-          );
-        },
+                );
+              }).toList(),
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => AppErrorWidget(
+            message: 'Gagal memuat riwayat: $e',
+            onRetry: () => ref.invalidate(ordersProvider),
+          ),
+        ),
       ),
     );
   }
 
-  String _formatPrice(int price) {
-    return price.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (m) => '${m[1]}.',
-    );
-  }
 }
 
 class _EmptyHistoryState extends StatelessWidget {
@@ -232,7 +234,7 @@ class _OrderCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'Rp ${_formatPrice(order.totalPrice)}',
+                  AppFormatters.rupiah(order.totalPrice),
                   style: AppTextStyles.bodyMediumBold.copyWith(
                     color: order.isPaid ? Colors.green.shade700 : AppColors.primary,
                   ),
@@ -315,28 +317,22 @@ class _OrderCard extends StatelessWidget {
     }
   }
 
-  String _formatPrice(int price) {
-    return price.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (m) => '${m[1]}.',
-    );
-  }
 }
 
-class _PayUnpaidButton extends StatelessWidget {
+class _PayUnpaidButton extends ConsumerWidget {
   final String weekKey;
   final int total;
 
   const _PayUnpaidButton({required this.weekKey, required this.total});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton.icon(
         icon: Icon(Icons.payment, color: AppColors.primary),
         label: Text(
-          'Bayar Hutang Minggu Ini (Rp ${_formatPrice(total)})',
+          'Bayar Hutang Minggu Ini (${AppFormatters.rupiah(total)})',
           style: AppTextStyles.button.copyWith(color: AppColors.primary),
         ),
         style: OutlinedButton.styleFrom(
@@ -346,17 +342,35 @@ class _PayUnpaidButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppRadius.md),
           ),
         ),
-        onPressed: () => context.go('/checkout'),
+        onPressed: () async {
+          final db = ref.read(databaseServiceProvider);
+          final uid = ref.read(currentUserIdProvider);
+          if (uid == null) return;
+          
+          final orders = await db.getUserOrders(uid);
+          final weekOrders = orders.where((o) => o.weekLabel == weekKey && !o.isPaid).toList();
+          
+          final checkoutItems = weekOrders.map((o) => CartItem(
+            day: o.weekLabel,
+            menuId: o.id,
+            menuName: 'Tagihan ${o.weekLabel}',
+            price: o.totalPrice,
+            quantity: 1,
+          )).toList();
+
+          ref.read(checkoutProvider.notifier).state = CheckoutState(
+            items: checkoutItems,
+            total: total,
+            existingOrderIds: weekOrders.map((o) => o.id).toList(),
+          );
+          if (context.mounted) {
+            context.go('/checkout');
+          }
+        },
       ),
     );
   }
 
-  String _formatPrice(int price) {
-    return price.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (m) => '${m[1]}.',
-    );
-  }
 }
 
 extension StringExtension on String {

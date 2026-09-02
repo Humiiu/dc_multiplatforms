@@ -3,6 +3,25 @@ enum Kelas { x, xi, xii }
 
 enum Jurusan { rpl, dkv, anm, bc, tkj, gd }
 
+/// Role pengguna aplikasi. `admin` untuk pengelola katering (website admin).
+enum UserRole { user, admin }
+
+extension UserRoleExtension on UserRole {
+  String get label => switch (this) {
+        UserRole.user => 'user',
+        UserRole.admin => 'admin',
+      };
+
+  static UserRole fromLabel(String? label) {
+    switch (label?.toLowerCase()) {
+      case 'admin':
+        return UserRole.admin;
+      default:
+        return UserRole.user;
+    }
+  }
+}
+
 extension KelasExtension on Kelas {
   String get label => switch (this) {
         Kelas.x => 'X',
@@ -10,12 +29,18 @@ extension KelasExtension on Kelas {
         Kelas.xii => 'XII',
       };
 
-  static Kelas fromLabel(String label) => switch (label.toUpperCase()) {
+  static Kelas fromLabel(String label) {
+    try {
+      return switch (label.toUpperCase()) {
         'X' => Kelas.x,
         'XI' => Kelas.xi,
         'XII' => Kelas.xii,
-        _ => throw ArgumentError('Invalid kelas: $label'),
+        _ => Kelas.x,
       };
+    } catch (_) {
+      return Kelas.x;
+    }
+  }
 }
 
 extension JurusanExtension on Jurusan {
@@ -28,15 +53,21 @@ extension JurusanExtension on Jurusan {
         Jurusan.gd => 'GD',
       };
 
-  static Jurusan fromLabel(String label) => switch (label.toUpperCase()) {
+  static Jurusan fromLabel(String label) {
+    try {
+      return switch (label.toUpperCase()) {
         'RPL' => Jurusan.rpl,
         'DKV' => Jurusan.dkv,
         'ANM' => Jurusan.anm,
         'BC' => Jurusan.bc,
         'TKJ' => Jurusan.tkj,
         'GD' => Jurusan.gd,
-        _ => throw ArgumentError('Invalid jurusan: $label'),
+        _ => Jurusan.rpl,
       };
+    } catch (_) {
+      return Jurusan.rpl;
+    }
+  }
 }
 
 /// Main user model for the app.
@@ -47,6 +78,7 @@ class AppUser {
   final String name;
   final Jurusan jurusan;
   final Kelas kelas;
+  final UserRole role;
   final String? photoUrl;
   final DateTime createdAt;
 
@@ -57,6 +89,7 @@ class AppUser {
     required this.name,
     required this.jurusan,
     required this.kelas,
+    this.role = UserRole.user,
     this.photoUrl,
     required this.createdAt,
   });
@@ -72,6 +105,7 @@ class AppUser {
         kelas: map['kelas'] != null
             ? KelasExtension.fromLabel(map['kelas'] as String)
             : Kelas.x,
+        role: UserRoleExtension.fromLabel(map['role'] as String?),
         photoUrl: map['photoUrl'] as String?,
         createdAt: map['createdAt'] != null
             ? DateTime.fromMillisecondsSinceEpoch(map['createdAt'] as int)
@@ -84,6 +118,7 @@ class AppUser {
         'name': name,
         'jurusan': jurusan.label,
         'kelas': kelas.label,
+        'role': role.label,
         'photoUrl': photoUrl,
         'createdAt': createdAt.millisecondsSinceEpoch,
       };
@@ -95,6 +130,7 @@ class AppUser {
     String? name,
     Jurusan? jurusan,
     Kelas? kelas,
+    UserRole? role,
     String? photoUrl,
   }) => AppUser(
         uid: uid,
@@ -103,7 +139,10 @@ class AppUser {
         name: name ?? this.name,
         jurusan: jurusan ?? this.jurusan,
         kelas: kelas ?? this.kelas,
+        role: role ?? this.role,
         photoUrl: photoUrl ?? this.photoUrl,
         createdAt: createdAt,
       );
+
+  bool get isAdmin => role == UserRole.admin;
 }

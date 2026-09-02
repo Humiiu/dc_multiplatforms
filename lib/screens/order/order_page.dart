@@ -4,25 +4,13 @@ import 'package:go_router/go_router.dart';
 import '../../core/constants.dart';
 import '../../core/theme.dart';
 import '../../models/menu.dart';
+import '../../models/order.dart';
+import '../../models/cart_item.dart';
 import '../../services/database_service.dart';
-
-/// State keranjang: hari terpilih -> list menu items.
-class CartItem {
-  final String day;
-  final String menuId;
-  final String menuName;
-  final int price;
-
-  CartItem({
-    required this.day,
-    required this.menuId,
-    required this.menuName,
-    required this.price,
-  });
-
-  Map<String, dynamic> toMap() =>
-      {'day': day, 'menuId': menuId, 'menuName': menuName, 'price': price};
-}
+import '../../providers/auth_provider.dart';
+import '../../providers/order_provider.dart';
+import '../../providers/checkout_provider.dart';
+import '../../utils/formatters.dart';
 
 final cartProvider = StateProvider<List<CartItem>>((ref) => []);
 
@@ -42,20 +30,21 @@ class _OrderPageState extends ConsumerState<OrderPage> {
   void initState() {
     super.initState();
     // Check for pre-selected day from query params
-    // WidgetsBinding.instance.addPostFrameCallback((_) {
-    //   final uri = GoRouterState.of(context).uri;
-    //   final dayParam = uri.queryParameters['day'];
-    //   if (dayParam != null && hariKerjaDb.contains(dayParam)) {
-    //     ref.read(selectedDaysProvider.notifier).state = {dayParam};
-    //   }
-    // });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final uri = GoRouterState.of(context).uri;
+      final dayParam = uri.queryParameters['day'];
+      if (dayParam != null && hariKerjaDb.contains(dayParam)) {
+        ref.read(selectedDaysProvider.notifier).state = {dayParam};
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final selectedDays = ref.watch(selectedDaysProvider);
     final cart = ref.watch(cartProvider);
-    final total = cart.fold(0, (sum, item) => sum + item.price);
+    final total = cart.fold(0, (sum, item) => sum + (item.price * item.quantity));
     final canCheckout = selectedDays.isNotEmpty && cart.isNotEmpty;
 
     return Scaffold(
@@ -143,6 +132,9 @@ class _SelectDaysSection extends ConsumerWidget {
                     final newSet = Set<String>.from(state);
                     if (isSelected) {
                       newSet.remove(dayKey);
+                      // Also remove items for this day from cart
+                      ref.read(cartProvider.notifier).update((list) =>
+                          list.where((item) => item.day != dayKey).toList());
                     } else {
                       newSet.add(dayKey);
                     }
@@ -302,30 +294,45 @@ class _DayMenuSection extends ConsumerWidget {
                 final key = menus.keys.elementAt(index);
                 final data = menus[key] as Map<dynamic, dynamic>;
                 final menu = MenuItem.fromMap(key, data);
-                final isInCart = ref.watch(cartProvider).any(
+                
+                final cartItem = ref.watch(cartProvider).where(
                   (item) => item.day == dayKey && item.menuId == menu.id,
-                );
+                ).firstOrNull;
 
                 return _MenuItemCard(
                   menu: menu,
-                  isInCart: isInCart,
-                  onTap: () {
-                    if (isInCart) {
-                      // Remove from cart
-                      ref.read(cartProvider.notifier).update((list) =>
-                          list.where((item) => !(item.day == dayKey && item.menuId == menu.id)).toList());
-                    } else {
-                      // Add to cart
-                      ref.read(cartProvider.notifier).update((list) => [
-                            ...list,
-                            CartItem(
-                              day: dayKey,
-                              menuId: menu.id,
-                              menuName: menu.name,
-                              price: menu.price,
-                            ),
-                          ]);
-                    }
+                  quantity: cartItem?.quantity ?? 0,
+                  onIncrement: () {
+                    ref.read(cartProvider.notifier).update((list) {
+                      final newList = List<CartItem>.from(list);
+                      final index = newList.indexWhere((item) => item.day == dayKey && item.menuId == menu.id);
+                      if (index != -1) {
+                        newList[index].quantity++;
+                      } else {
+                        newList.add(CartItem(
+                          day: dayKey,
+                          menuId: menu.id,
+                          menuName: menu.name,
+                          price: menu.price,
+                          quantity: 1,
+                        ));
+                      }
+                      return newList;
+                    });
+                  },
+                  onDecrement: () {
+                    ref.read(cartProvider.notifier).update((list) {
+                      final newList = List<CartItem>.from(list);
+                      final index = newList.indexWhere((item) => item.day == dayKey && item.menuId == menu.id);
+                      if (index != -1) {
+                        if (newList[index].quantity > 1) {
+                          newList[index].quantity--;
+                        } else {
+                          newList.removeAt(index);
+                        }
+                      }
+                      return newList;
+                    });
                   },
                 );
               },
@@ -452,99 +459,108 @@ class _EmptyDaySection extends StatelessWidget {
 
 class _MenuItemCard extends StatelessWidget {
   final MenuItem menu;
-  final bool isInCart;
-  final VoidCallback onTap;
+  final int quantity;
+  final VoidCallback onIncrement;
+  final VoidCallback onDecrement;
 
   const _MenuItemCard({
     required this.menu,
-    required this.isInCart,
-    required this.onTap,
+    required this.quantity,
+    required this.onIncrement,
+    required this.onDecrement,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isInCart = quantity > 0;
+
     return Material(
       color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: ShapeDecoration(
-            color: isInCart ? AppColors.primaryLight : Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              side: BorderSide(
-                color: isInCart ? AppColors.primary : AppColors.border,
-                width: isInCart ? 1.5 : 0.5,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: ShapeDecoration(
+          color: isInCart ? AppColors.primaryLight : Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            side: BorderSide(
+              color: isInCart ? AppColors.primary : AppColors.border,
+              width: isInCart ? 1.5 : 0.5,
+            ),
+          ),
+          shadows: AppShadows.card,
+        ),
+        child: Row(
+          children: [
+            // Menu image placeholder
+            Container(
+              width: 56,
+              height: 56,
+              clipBehavior: Clip.antiAlias,
+              decoration: ShapeDecoration(
+                color: AppColors.primaryLight,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+              ),
+              child: menu.imageUrl != null
+                  ? Image.network(
+                      menu.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _buildPlaceholder(),
+                    )
+                  : _buildPlaceholder(),
+            ),
+            const SizedBox(width: 16),
+            // Menu info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    menu.name,
+                    style: AppTextStyles.bodyMediumBold,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    AppFormatters.rupiah(menu.price),
+                    style: AppTextStyles.bodyMedium.copyWith(color: AppColors.primary),
+                  ),
+                ],
               ),
             ),
-            shadows: AppShadows.card,
-          ),
-          child: Row(
-            children: [
-              // Menu image placeholder
-              Container(
-                width: 56,
-                height: 56,
-                clipBehavior: Clip.antiAlias,
-                decoration: ShapeDecoration(
-                  color: AppColors.primaryLight,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.md),
+            // Counter buttons
+            if (!isInCart)
+              IconButton(
+                onPressed: onIncrement,
+                icon: Icon(Icons.add_circle_outline, color: AppColors.primary, size: 32),
+              )
+            else
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    onPressed: onDecrement,
+                    icon: Icon(Icons.remove_circle_outline, color: AppColors.primary, size: 28),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
                   ),
-                ),
-                child: menu.imageUrl != null
-                    ? Image.network(
-                        menu.imageUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _buildPlaceholder(),
-                      )
-                    : _buildPlaceholder(),
-              ),
-              const SizedBox(width: 16),
-              // Menu info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      menu.name,
-                      style: AppTextStyles.bodyMediumBold,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Rp ${menu.price.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}',
-                      style: AppTextStyles.bodyMedium.copyWith(color: AppColors.primary),
-                    ),
-                  ],
-                ),
-              ),
-              // Add/Remove button
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: 40,
-                height: 40,
-                decoration: ShapeDecoration(
-                  color: isInCart ? AppColors.primary : Colors.transparent,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    side: BorderSide(
-                      color: isInCart ? AppColors.primary : AppColors.border,
-                      width: 1.5,
-                    ),
+                  const SizedBox(width: 12),
+                  Text(
+                    '$quantity',
+                    style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold),
                   ),
-                ),
-                child: Icon(
-                  isInCart ? Icons.check : Icons.add,
-                  color: isInCart ? Colors.white : AppColors.primary,
-                  size: 24,
-                ),
+                  const SizedBox(width: 12),
+                  IconButton(
+                    onPressed: onIncrement,
+                    icon: Icon(Icons.add_circle, color: AppColors.primary, size: 28),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
               ),
-            ],
-          ),
+          ],
         ),
       ),
     );
@@ -663,7 +679,7 @@ class _BottomSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dayCount = selectedDays.length;
-    final dailyPrice = dayCount > 0 ? total ~/ dayCount : AppConstants.defaultDailyPrice;
+    final totalItems = cart.fold(0, (sum, item) => sum + item.quantity);
     final isOverLimit = total > AppConstants.maxUtang;
 
     return Container(
@@ -695,12 +711,12 @@ class _BottomSection extends ConsumerWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        '$dayCount hari dipilih • $dailyPrice/hari',
+                        '$dayCount hari • $totalItems menu terpilih',
                         style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Total: Rp ${total.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}',
+                        'Total: ${AppFormatters.rupiah(total)}',
                         style: AppTextStyles.priceMedium,
                       ),
                     ],
@@ -739,8 +755,8 @@ class _BottomSection extends ConsumerWidget {
                   child: _PaymentOptionCard(
                     icon: Icons.schedule_outlined,
                     title: 'Hutang',
-                    subtitle: 'Jatuh tempo minggu ini\nMaks Rp ${(AppConstants.maxUtang / 1000).toInt()}rb',
-                    isEnabled: !isOverLimit,
+                    subtitle: 'Jatuh tempo minggu ini\nMaks ${AppFormatters.rupiah(AppConstants.maxUtang)}',
+                    isEnabled: canCheckout && !isOverLimit,
                     onTap: () => _showHutangBottomSheet(context, ref, total),
                   ),
                 ),
@@ -753,7 +769,13 @@ class _BottomSection extends ConsumerWidget {
                     subtitle: 'Via QRIS / Transfer',
                     isEnabled: canCheckout,
                     isPrimary: true,
-                    onTap: () => context.go('/checkout'),
+                    onTap: () {
+                      ref.read(checkoutProvider.notifier).state = CheckoutState(
+                        items: cart,
+                        total: total,
+                      );
+                      context.go('/checkout');
+                    },
                   ),
                 ),
               ],
@@ -865,12 +887,19 @@ class _PaymentOptionCard extends StatelessWidget {
   }
 }
 
-class _HutangBottomSheet extends ConsumerWidget {
+class _HutangBottomSheet extends ConsumerStatefulWidget {
   final int total;
   const _HutangBottomSheet({required this.total});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_HutangBottomSheet> createState() => _HutangBottomSheetState();
+}
+
+class _HutangBottomSheetState extends ConsumerState<_HutangBottomSheet> {
+  bool _isLoading = false;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: ShapeDecoration(
@@ -898,7 +927,7 @@ class _HutangBottomSheet extends ConsumerWidget {
           Text('Konfirmasi Hutang', style: AppTextStyles.sectionTitle),
           const SizedBox(height: 8),
           Text(
-            'Anda akan berhutang Rp ${_formatPrice(total)}',
+            'Anda akan berhutang ${AppFormatters.rupiah(widget.total)}',
             style: AppTextStyles.bodyMedium,
           ),
           const SizedBox(height: 16),
@@ -917,12 +946,15 @@ class _HutangBottomSheet extends ConsumerWidget {
                   children: [
                     Icon(Icons.info_outline, color: AppColors.primary, size: 20),
                     const SizedBox(width: 8),
-                    Text('Ketentuan Hutang', style: AppTextStyles.bodyMediumBold.copyWith(color: AppColors.primary)),
+                    Text('Ketentuan Hutang',
+                        style: AppTextStyles.bodyMediumBold
+                            .copyWith(color: AppColors.primary)),
                   ],
                 ),
                 const SizedBox(height: 12),
                 _HutangRule('Jatuh tempo: Minggu ini (Jumat pukul 23:59)'),
-                _HutangRule('Maksimal hutang: Rp ${(AppConstants.maxUtang / 1000).toInt()}rb'),
+                _HutangRule(
+                    'Maksimal hutang: ${AppFormatters.rupiah(AppConstants.maxUtang)}'),
                 _HutangRule('Melebihi batas → tidak bisa order baru'),
                 _HutangRule('Bayar via QRIS/Transfer di halaman History'),
               ],
@@ -933,39 +965,112 @@ class _HutangBottomSheet extends ConsumerWidget {
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: _isLoading ? null : () => Navigator.pop(context),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
                   ),
-                  child: Text('Batal', style: AppTextStyles.button.copyWith(color: AppColors.primary)),
+                  child: Text('Batal',
+                      style: AppTextStyles.button
+                          .copyWith(color: AppColors.primary)),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: FilledButton(
-                  onPressed: () {
-                    // TODO: Create order with paymentMethod = hutang
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Pesanan hutang dibuat', style: AppTextStyles.bodyMedium),
-                        backgroundColor: AppColors.textPrimary,
-                      ),
-                    );
-                    ref.read(cartProvider.notifier).state = [];
-                    ref.read(selectedDaysProvider.notifier).state = {};
-                    context.go('/home');
-                  },
+                  onPressed: _isLoading
+                      ? null
+                      : () async {
+                          final uid = ref.read(currentUserIdProvider);
+                          if (uid == null) return;
+
+                          setState(() => _isLoading = true);
+
+                          final cart = ref.read(cartProvider);
+                          final selectedDays = ref.read(selectedDaysProvider);
+
+                          final menuPerDay = <String, List<String>>{};
+                          for (final day in selectedDays) {
+                            menuPerDay[day] = cart
+                                .where((item) => item.day == day)
+                                .expand((item) =>
+                                    List.filled(item.quantity, item.menuId))
+                                .toList();
+                          }
+
+                          // Calculate Friday of current week as due date
+                          final now = DateTime.now();
+                          final friday = now.add(Duration(
+                              days: (DateTime.friday - now.weekday) % 7));
+                          final dueDate = DateTime(
+                              friday.year, friday.month, friday.day, 23, 59, 59);
+
+                          final order = Order(
+                            id: '', // Database service will push a new ID
+                            userId: uid,
+                            selectedDays: selectedDays.toList(),
+                            menuPerDay: menuPerDay,
+                            totalPrice: widget.total,
+                            isPaid: false,
+                            paymentMethod: PaymentMethod.hutang,
+                            createdAt: now,
+                            dueDate: dueDate,
+                          );
+
+                          try {
+                            await ref
+                                .read(databaseServiceProvider)
+                                .createOrder(order);
+
+                            // INVALIDATE: Ensure dashboard and history update
+                            ref.invalidate(tagihanProvider);
+                            ref.invalidate(ordersProvider);
+
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Pesanan hutang berhasil dibuat',
+                                      style: AppTextStyles.bodyMedium),
+                                  backgroundColor: AppColors.textPrimary,
+                                ),
+                              );
+                              ref.read(cartProvider.notifier).state = [];
+                              ref.read(selectedDaysProvider.notifier).state = {};
+                              context.go('/home');
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Gagal membuat pesanan: $e',
+                                      style: AppTextStyles.bodyMedium),
+                                  backgroundColor: AppColors.error,
+                                ),
+                              );
+                            }
+                          } finally {
+                            if (context.mounted) setState(() => _isLoading = false);
+                          }
+                        },
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
                   ),
-                  child: Text('Konfirmasi Hutang', style: AppTextStyles.button),
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation(Colors.white),
+                          ),
+                        )
+                      : Text('Konfirmasi Hutang', style: AppTextStyles.button),
                 ),
               ),
             ],
@@ -976,12 +1081,7 @@ class _HutangBottomSheet extends ConsumerWidget {
   }
 }
 
-String _formatPrice(int price) {
-  return price.toString().replaceAllMapped(
-    RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-    (m) => '${m[1]}.',
-  );
-}
+
 
 class _HutangRule extends StatelessWidget {
   final String text;

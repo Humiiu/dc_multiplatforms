@@ -4,11 +4,19 @@ class AppConstants {
   static const int maxUtang = 100000;
 
   /// Nomor WA admin untuk request menu khusus / tiket.
-  /// TODO: ganti dengan nomor admin yang sebenarnya.
-  static const String adminWhatsApp = '6281234567890';
+  static const String adminWhatsApp = '628999107194';
 
   /// Harga default per hari catering (jika tidak ada di DB)
   static const int defaultDailyPrice = 20000;
+
+  /// Error messages
+  static const String errPhoneEmpty = 'Nomor telepon tidak boleh kosong';
+  static const String errPhoneInvalid = 'Format nomor telepon tidak valid';
+  static const String errUsernameEmpty = 'Username tidak boleh kosong';
+  static const String errUsernameTooShort = 'Username minimal 3 karakter';
+  static const String errNameEmpty = 'Nama lengkap tidak boleh kosong';
+  static const String errPasswordTooShort = 'Password minimal 6 karakter';
+  static const String errPasswordNoMatch = 'Konfirmasi password tidak cocok';
 
   AppConstants._();
 }

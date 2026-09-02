@@ -1,11 +1,11 @@
 {
-    "name": "dc_multiplatforms",
-    "short_name": "dc_multiplatforms",
+    "name": "Catering Booking",
+    "short_name": "Catering",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "eughh",
+    "background_color": "#FFF8F3",
+    "theme_color": "#9E003A",
+    "description": "Sistem pemesanan katering praktis untuk siswa SMK.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

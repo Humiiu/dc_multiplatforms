@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme.dart';
+import '../../core/constants.dart';
 import '../../models/user.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
@@ -53,29 +55,25 @@ class _AuthPageState extends ConsumerState<AuthPage> {
 
     // Validate
     final rawPhone = _phoneCtrl.text.trim();
-    if (rawPhone.isEmpty) {
-      setState(() => _errorMessage = 'Nomor telepon tidak boleh kosong');
-      return;
-    }
     final normalized = normalizeIndonesianPhone(rawPhone);
     if (normalized == null) {
-      setState(() => _errorMessage = 'Format nomor telepon tidak valid');
+      setState(() => _errorMessage = AppConstants.errPhoneInvalid);
       return;
     }
-    if (_usernameCtrl.text.trim().isEmpty) {
-      setState(() => _errorMessage = 'Username tidak boleh kosong');
+    if (_usernameCtrl.text.trim().length < 3) {
+      setState(() => _errorMessage = AppConstants.errUsernameTooShort);
       return;
     }
     if (_nameCtrl.text.trim().isEmpty) {
-      setState(() => _errorMessage = 'Nama lengkap tidak boleh kosong');
+      setState(() => _errorMessage = AppConstants.errNameEmpty);
       return;
     }
     if (_passwordCtrl.text.length < 6) {
-      setState(() => _errorMessage = 'Password minimal 6 karakter');
+      setState(() => _errorMessage = AppConstants.errPasswordTooShort);
       return;
     }
     if (_passwordCtrl.text != _confirmPasswordCtrl.text) {
-      setState(() => _errorMessage = 'Konfirmasi password tidak cocok');
+      setState(() => _errorMessage = AppConstants.errPasswordNoMatch);
       return;
     }
 
@@ -88,36 +86,53 @@ class _AuthPageState extends ConsumerState<AuthPage> {
       final db = ref.read(databaseServiceProvider);
       final authService = ref.read(authServiceProvider);
 
+      // Check if phone is already registered
+      final isPhoneTaken = await db.isPhoneRegistered(normalized);
+      if (isPhoneTaken) {
+        throw Exception('Nomor telepon sudah terdaftar');
+      }
+
       // Check if username is taken
       final isTaken = await db.isUsernameTaken(_usernameCtrl.text.trim());
       if (isTaken) {
         throw Exception('Username sudah digunakan');
       }
 
-      // Create Firebase email account (uid@catering.app + password)
-      final tempEmail = '${DateTime.now().millisecondsSinceEpoch}@catering.app';
-      final user = await authService.createUserWithEmailAndPassword(
-        tempEmail,
-        _passwordCtrl.text,
-      );
-      final uid = user?.uid;
-      if (uid == null) {
-        throw Exception('Gagal membuat akun');
+      // Generate the UID-based email directly to avoid 'recent-login' errors on updateEmail
+      // We don't have the UID yet, so we use a placeholder or a deterministic format if possible.
+      // Actually, we can just use the phone number as the basis for the email.
+      final loginEmail = '${normalized.replaceAll('+', '')}@catering.app';
+
+      User? user;
+      try {
+        user = await authService.createUserWithEmailAndPassword(
+          loginEmail,
+          _passwordCtrl.text,
+        );
+      } catch (e) {
+        throw Exception('Gagal membuat akun: $e');
       }
 
-      // Update the email to use uid-based format
-      // ignore: deprecated_member_use
-      await user!.updateEmail('$uid@catering.app');
+      final uid = user?.uid;
+      if (uid == null) {
+        throw Exception('Gagal mendapatkan UID');
+      }
 
-      // Register user data in Realtime Database
-      await authService.registerUser(
-        uid: uid,
-        username: _usernameCtrl.text.trim(),
-        phone: normalized,
-        name: _nameCtrl.text.trim(),
-        jurusan: _selectedJurusan,
-        kelas: _selectedKelas,
-      );
+      try {
+        // Register user data in Realtime Database
+        await authService.registerUser(
+          uid: uid,
+          username: _usernameCtrl.text.trim(),
+          phone: normalized,
+          name: _nameCtrl.text.trim(),
+          jurusan: _selectedJurusan,
+          kelas: _selectedKelas,
+        );
+      } catch (e) {
+        // CLEANUP: If DB registration fails, delete the auth user to avoid orphans
+        await user?.delete();
+        throw Exception('Registrasi database gagal: $e');
+      }
 
       if (mounted) {
         context.go('/home');
@@ -133,17 +148,26 @@ class _AuthPageState extends ConsumerState<AuthPage> {
 
   /// Login with phone + password
   Future<void> _loginWithPassword() async {
+    // Mark all fields as touched for login
+    setState(() => _touchedFields.addAll(['phone', 'password']));
+
     final rawPhone = _phoneCtrl.text.trim();
     final password = _passwordCtrl.text;
 
     if (rawPhone.isEmpty || password.isEmpty) {
-      setState(() => _errorMessage = 'Nomor telepon dan password wajib diisi');
+      // Errors will be shown by field-level validation via _getFieldError
+      setState(() => _errorMessage = null);
       return;
     }
 
     final normalized = normalizeIndonesianPhone(rawPhone);
     if (normalized == null) {
-      setState(() => _errorMessage = 'Format nomor telepon tidak valid');
+      setState(() => _errorMessage = AppConstants.errPhoneInvalid);
+      return;
+    }
+
+    if (password.length < 6) {
+      setState(() => _errorMessage = AppConstants.errPasswordTooShort);
       return;
     }
 
@@ -180,20 +204,23 @@ class _AuthPageState extends ConsumerState<AuthPage> {
     switch (field) {
       case 'phone':
         final raw = _phoneCtrl.text.trim();
-        if (raw.isEmpty) return 'Nomor telepon tidak boleh kosong';
-        if (normalizeIndonesianPhone(raw) == null) return 'Format nomor telepon tidak valid';
+        if (raw.isEmpty) return AppConstants.errPhoneEmpty;
+        if (normalizeIndonesianPhone(raw) == null) return AppConstants.errPhoneInvalid;
         return null;
       case 'username':
-        if (_usernameCtrl.text.trim().isEmpty) return 'Username tidak boleh kosong';
+        final username = _usernameCtrl.text.trim();
+        if (username.isEmpty) return AppConstants.errUsernameEmpty;
+        if (username.length < 3) return AppConstants.errUsernameTooShort;
         return null;
       case 'name':
-        if (_nameCtrl.text.trim().isEmpty) return 'Nama lengkap tidak boleh kosong';
+        if (_nameCtrl.text.trim().isEmpty) return AppConstants.errNameEmpty;
         return null;
       case 'password':
-        if (_passwordCtrl.text.length < 6) return 'Password minimal 6 karakter';
+        if (_passwordCtrl.text.isEmpty) return 'Password tidak boleh kosong';
+        if (_passwordCtrl.text.length < 6) return AppConstants.errPasswordTooShort;
         return null;
       case 'confirmPassword':
-        if (_passwordCtrl.text != _confirmPasswordCtrl.text) return 'Konfirmasi password tidak cocok';
+        if (_passwordCtrl.text != _confirmPasswordCtrl.text) return AppConstants.errPasswordNoMatch;
         return null;
       default:
         return null;
@@ -261,7 +288,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                     child: TextButton(
                       onPressed: () {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Fitur lupa password belum tersedia')),
+                          const SnackBar(content: Text('blom ada fitur nya')),
                         );
                       },
                       style: TextButton.styleFrom(
@@ -274,7 +301,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                           fontSize: 12,
                         ),
                       ),
-                      child: const Text('Lupa password?'),
+                      child: const Text('lupa password?'),
                     ),
                   ),
                 ] else ...[
@@ -294,7 +321,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                   _buildInputField(
                     controller: _usernameCtrl,
                     label: 'Username',
-                    hintText: 'Buat username unik',
+                    hintText: 'Buat username',
                     keyboardType: TextInputType.text,
                     prefixIcon: Icons.person_outline,
                     fieldKey: 'username',

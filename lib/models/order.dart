@@ -52,9 +52,7 @@ class Order {
         ),
         totalPrice: map['totalPrice'] as int,
         isPaid: map['isPaid'] as bool,
-        paymentMethod: PaymentMethod.values.byName(
-          map['paymentMethod'] as String? ?? 'hutang',
-        ),
+        paymentMethod: _parsePaymentMethod(map['paymentMethod'] as String?),
         createdAt:
             DateTime.fromMillisecondsSinceEpoch(map['createdAt'] as int),
         dueDate: map['dueDate'] != null
@@ -101,4 +99,13 @@ class Order {
 
   /// Check if order is hutang and overdue
   bool get isOverdue => !isPaid && dueDate != null && DateTime.now().isAfter(dueDate!);
+}
+
+PaymentMethod _parsePaymentMethod(String? name) {
+  if (name == null) return PaymentMethod.hutang;
+  try {
+    return PaymentMethod.values.byName(name);
+  } catch (_) {
+    return PaymentMethod.hutang;
+  }
 }
