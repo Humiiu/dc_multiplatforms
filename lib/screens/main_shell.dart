@@ -12,6 +12,7 @@ class MainShell extends StatelessWidget {
     if (location.startsWith('/order')) return 1;
     if (location.startsWith('/history')) return 2;
     if (location.startsWith('/profile')) return 3;
+    if (location.startsWith('/promo')) return 4;
     return 0; // /home default
   }
 
@@ -23,6 +24,8 @@ class MainShell extends StatelessWidget {
         context.go('/history');
       case 3:
         context.go('/profile');
+      case 4:
+        context.go('/promo');
       default:
         context.go('/home');
     }
@@ -72,9 +75,9 @@ class MainShell extends StatelessWidget {
                 label: 'Riwayat',
               ),
               NavigationDestination(
-                icon: Icon(Icons.person_outline),
-                selectedIcon: Icon(Icons.person),
-                label: 'Profil',
+                icon: Icon(Icons.campaign_outlined),
+                selectedIcon: Icon(Icons.campaign),
+                label: 'Promo',
               ),
             ],
           ),
