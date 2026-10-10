@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+
 import '../core/theme.dart';
+import '../services/admin_whatsapp_service.dart';
 import 'demo_state.dart';
 import 'shared_widgets.dart';
 
@@ -25,7 +26,6 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
             (_filter == 2 && !order.isPaid))
         .toList();
     final total = allOrders.fold<int>(0, (sum, order) => sum + order.amount);
-
     return Scaffold(
       body: SafeArea(
         bottom: false,
@@ -34,54 +34,54 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
             const DemoTopBar(),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(28, 8, 28, 24),
+                padding: const EdgeInsets.fromLTRB(28, 18, 28, 24),
                 children: [
                   Center(
                     child: Container(
-                      width: 64,
-                      height: 64,
+                      width: 52,
+                      height: 52,
                       decoration: BoxDecoration(
                         color: AppColors.surfaceVariant,
-                        borderRadius: BorderRadius.circular(17),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
                       ),
                       child: const Icon(
-                        Icons.receipt_long,
+                        Icons.receipt_long_outlined,
                         color: AppColors.primary,
-                        size: 30,
+                        size: 24,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 10),
                   Text(
                     'History',
                     textAlign: TextAlign.center,
-                    style: AppTextStyles.welcome.copyWith(
+                    style: AppTextStyles.sectionTitle.copyWith(
                       color: AppColors.textPrimary,
-                      fontSize: 29,
+                      fontSize: 22,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     'Total Seluruh Ketring:',
                     textAlign: TextAlign.center,
-                    style: AppTextStyles.bodyLarge.copyWith(
+                    style: AppTextStyles.bodySmall.copyWith(
                       color: AppColors.textSecondary,
                     ),
                   ),
                   Text(
                     demoRupiah(total),
                     textAlign: TextAlign.center,
-                    style: AppTextStyles.bodyLarge.copyWith(
+                    style: AppTextStyles.bodyMedium.copyWith(
                       color: AppColors.primary,
-                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 12),
                   _HistoryFilters(
                     selected: _filter,
                     onSelected: (filter) => setState(() => _filter = filter),
                   ),
-                  const SizedBox(height: 26),
+                  const SizedBox(height: 16),
                   if (orders.isEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 48),
@@ -96,11 +96,14 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                       (order) => _HistoryCard(
                         order: order,
                         onPay: () {
-                          ref.read(demoOrderProvider).prepareDebtPayment(
-                                order.amount,
-                                targetWeek: order.week,
-                              );
-                          context.push('/checkout');
+                          // TODO(backend): replace mock debt confirmation flow with real payment backend.
+                          AdminWhatsappService.open(
+                            purpose: AdminWhatsappPurpose.debtPayment,
+                            name: 'Humiiu',
+                            kelas: 'XII IPS 2',
+                            total: order.amount,
+                            periode: order.week,
+                          );
                         },
                       ),
                     ),
@@ -143,14 +146,16 @@ class _HistoryFilters extends StatelessWidget {
               labelStyle: AppTextStyles.bodyMedium.copyWith(
                 color: selected == i ? Colors.white : AppColors.textSecondary,
                 fontWeight: FontWeight.w600,
+                fontSize: 14,
               ),
               selectedColor: AppColors.primary,
-              backgroundColor: AppColors.accent,
+              backgroundColor: AppColors.chipBackground,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(AppRadius.round),
                 side: BorderSide.none,
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+              elevation: selected == i ? 0 : 1,
             ),
           ],
         ],
@@ -168,66 +173,75 @@ class _HistoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: AppShadows.subtle,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        boxShadow: AppShadows.card,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Text(order.date, style: AppTextStyles.caption),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(order.date, style: AppTextStyles.caption),
+                  ),
+                  Container(
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: order.isPaid
+                          ? AppColors.successSoft
+                          : AppColors.dangerSoft,
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(
+                      order.isPaid
+                          ? Icons.check_circle_outline
+                          : Icons.error_outline,
+                      color: order.isPaid ? AppColors.success : AppColors.error,
+                      size: 12,
+                    ),
+                  ),
+                ],
               ),
-              Container(
-                width: 38,
-                height: 23,
-                decoration: BoxDecoration(
-                  color: order.isPaid
-                      ? const Color(0xFFEFFAF3)
-                      : const Color(0xFFFFE1DE),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  order.isPaid ? Icons.check_circle_outline : Icons.access_time,
-                  color: order.isPaid
-                      ? const Color(0xFF17843B)
-                      : AppColors.primary,
-                  size: 15,
-                ),
+              const SizedBox(height: 4),
+              Text(
+                order.week,
+                style: AppTextStyles.sectionTitle.copyWith(fontSize: 20),
               ),
+              const SizedBox(height: 10),
+              for (final day in order.days) ...[
+                _HistoryDetailRow(
+                  icon: Icons.restaurant,
+                  text: day,
+                ),
+                const SizedBox(height: 8),
+              ],
+              _HistoryDetailRow(
+                icon: Icons.payments_outlined,
+                text: order.payment,
+                amount: demoRupiah(order.amount),
+                amountColor:
+                    order.isPaid ? AppColors.textPrimary : AppColors.error,
+              ),
+              if (!order.isPaid) ...[
+                const SizedBox(height: 10),
+                DemoPrimaryButton(
+                  label: 'Bayar Sekarang',
+                  icon: Icons.arrow_forward,
+                  onPressed: onPay,
+                ),
+              ],
             ],
           ),
-          const SizedBox(height: 4),
-          Text(order.week,
-              style: AppTextStyles.sectionTitle.copyWith(fontSize: 19)),
-          const SizedBox(height: 16),
-          for (final day in order.days) ...[
-            _HistoryDetailRow(
-              icon: Icons.restaurant,
-              text: day,
-            ),
-            const SizedBox(height: 7),
-          ],
-          _HistoryDetailRow(
-            icon: Icons.payments_outlined,
-            text: order.payment,
-            amount: demoRupiah(order.amount),
-            amountColor: order.isPaid ? AppColors.textPrimary : AppColors.error,
-          ),
-          if (!order.isPaid) ...[
-            const SizedBox(height: 16),
-            DemoPrimaryButton(
-              label: 'Bayar Sekarang',
-              icon: Icons.arrow_forward,
-              onPressed: onPay,
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }
@@ -249,14 +263,15 @@ class _HistoryDetailRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 9),
+      constraints: const BoxConstraints(minHeight: 36),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: AppColors.accent,
-        borderRadius: BorderRadius.circular(5),
+        color: AppColors.peach,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
       ),
       child: Row(
         children: [
-          Icon(icon, color: AppColors.primary, size: 15),
+          Icon(icon, color: AppColors.primary, size: 18),
           const SizedBox(width: 7),
           Expanded(child: Text(text, style: AppTextStyles.bodySmall)),
           if (amount != null)

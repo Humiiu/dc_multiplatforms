@@ -9,8 +9,13 @@ class AppColors {
 
   // Primary (maroon)
   static const primary = Color(0xFF9E003A);
-  static const primaryDark = Color(0xFF740028);
+  static const primaryDark = Color(0xFF7C1036);
   static const primaryLight = Color(0xFFFFDEA5); // light accent bg
+  static const peach = Color(0xFFFFE3B1);
+  static const chipBackground = Color(0xFFFFEBCD);
+  static const selectedPink = Color(0xFFF8ECE9);
+  static const selectedPinkAlt = Color(0xFFFAECEA);
+  static const blobPink = Color(0xFFF5DAD2);
 
   // Secondary (yellow/gold)
   static const secondary = Color(0xFFFFF0CA);
@@ -18,18 +23,19 @@ class AppColors {
   static const gold = Color(0xFFFECF15);
 
   // Text
-  static const textPrimary = Color(0xFF261900); // dark brown
-  static const textSecondary = Color(0xFF594043); // gray brown
+  static const textPrimary = Color(0xFF2A1A0A); // dark brown
+  static const textSecondary = Color(0xFF5A4A4A); // gray brown
   static const textOnPrimary = Colors.white;
-  static const textMuted = Color(0xFF594043);
+  static const textMuted = Color(0xFF5A4A4A);
 
   // Border / input
   static const border = Color(0xFFE1BEC1); // soft maroon border
+  static const borderSelected = Color(0xFFD9A0AD);
   static const borderStrong = Color(0x5E6E0129);
   static const divider = Color(0x4CE1BEC1);
 
   // Status
-  static const success = Color(0xFFBA1A1A); // used for red dot in tagihan
+  static const success = Color(0xFF22C55E);
   static const error = Color(0xFFBA1A1A);
   static const warning = Color(0xFFFFB800);
 
@@ -42,6 +48,8 @@ class AppColors {
   static const shadowPrimary = Color(0x269E013A);
   static const shadowPrimaryStrong = Color(0x4C740028);
   static const shadowPrimaryButton = Color(0x33740028);
+  static const dangerSoft = Color(0xFFFFDAD6);
+  static const successSoft = Color(0xFFE8F8EE);
 
   // Gradients
   static const gradientPrimary = LinearGradient(
@@ -113,9 +121,9 @@ class AppShadows {
 
   static const cardElevated = [
     BoxShadow(
-      color: Color(0x0F9E013A),
-      blurRadius: 24,
-      offset: Offset(0, 4),
+      color: Color(0x149E003A),
+      blurRadius: 20,
+      offset: Offset(0, 6),
       spreadRadius: 0,
     ),
   ];
@@ -455,7 +463,9 @@ ThemeData buildAppTheme() {
       height: 68,
       labelTextStyle: WidgetStateProperty.resolveWith((states) {
         final selected = states.contains(WidgetState.selected);
-        return selected ? AppTextStyles.navLabelSelected : AppTextStyles.navLabel;
+        return selected
+            ? AppTextStyles.navLabelSelected
+            : AppTextStyles.navLabel;
       }),
       iconTheme: WidgetStateProperty.resolveWith((states) {
         final selected = states.contains(WidgetState.selected);
@@ -482,8 +492,10 @@ ThemeData buildAppTheme() {
       backgroundColor: AppColors.accent,
       selectedColor: AppColors.primary,
       disabledColor: AppColors.border,
-      labelStyle: AppTextStyles.bodyMedium.copyWith(color: AppColors.textPrimary),
-      secondaryLabelStyle: AppTextStyles.bodyMedium.copyWith(color: Colors.white),
+      labelStyle:
+          AppTextStyles.bodyMedium.copyWith(color: AppColors.textPrimary),
+      secondaryLabelStyle:
+          AppTextStyles.bodyMedium.copyWith(color: Colors.white),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),

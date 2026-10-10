@@ -6,6 +6,10 @@ class AppConstants {
   /// Nomor WA admin untuk request menu khusus / tiket.
   static const String adminWhatsApp = '628999107194';
 
+  /// Placeholder WA admin untuk link frontend. Ganti saat API/backend siap.
+  // ignore: constant_identifier_names
+  static const String ADMIN_WA_NUMBER = '628999107194';
+
   /// Harga default per hari catering (jika tidak ada di DB)
   static const int defaultDailyPrice = 20000;
 

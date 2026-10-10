@@ -19,7 +19,7 @@ class OrderPage extends ConsumerWidget {
             const DemoTopBar(),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(28, 0, 28, 24),
+                padding: const EdgeInsets.fromLTRB(48, 20, 48, 24),
                 children: [
                   Text(
                     'Your Order',
@@ -29,10 +29,13 @@ class OrderPage extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    'Atur pesanan sesuai yang kamu mau',
-                    style: AppTextStyles.bodyLarge.copyWith(
-                      color: AppColors.textSecondary,
+                  SizedBox(
+                    width: 280,
+                    child: Text(
+                      'Atur pesanan sesuai yang kamu mau',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 30),
@@ -46,7 +49,7 @@ class OrderPage extends ConsumerWidget {
                           ref.read(demoOrderProvider).toggleDay(day.key),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 12),
                   _NumberedTitle(number: '2', title: 'Order Summary'),
                   const SizedBox(height: 16),
                   _OrderSummary(order: order),
@@ -55,7 +58,7 @@ class OrderPage extends ConsumerWidget {
                   const SizedBox(height: 16),
                   _PaymentChoice(
                     selected: order.paymentMethod == DemoPaymentMethod.qris,
-                    title: 'Bayar Sekarang',
+                    title: 'Pay Now',
                     subtitle:
                         'Pay securely online via e-Wallet or Bank Transfer.',
                     icon: Icons.account_balance_wallet_outlined,
@@ -65,8 +68,8 @@ class OrderPage extends ConsumerWidget {
                   ),
                   _PaymentChoice(
                     selected: order.paymentMethod == DemoPaymentMethod.payLater,
-                    title: 'Bayar Nanti (Ngutang)',
-                    subtitle: 'Jatuh tempo akhir minggu ini.',
+                    title: 'Pay Later',
+                    subtitle: 'Due at the end of this week.',
                     icon: Icons.access_time,
                     onTap: () => ref.read(demoOrderProvider).selectPayment(
                           DemoPaymentMethod.payLater,
@@ -74,7 +77,7 @@ class OrderPage extends ConsumerWidget {
                   ),
                   const SizedBox(height: 20),
                   DemoPrimaryButton(
-                    label: 'Konfirmasi Pesanan',
+                    label: 'Confirm Order',
                     onPressed: order.selectedDays.isEmpty
                         ? null
                         : () => context.push('/checkout'),
@@ -136,19 +139,28 @@ class _DayCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFF9ECEB) : AppColors.accent,
+          color: selected ? AppColors.selectedPinkAlt : AppColors.peach,
           border: Border.all(
-            color: selected ? AppColors.borderStrong : Colors.transparent,
+            color: selected ? AppColors.borderSelected : Colors.transparent,
           ),
-          borderRadius: BorderRadius.circular(9),
+          borderRadius: BorderRadius.circular(AppRadius.md),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              selected ? Icons.check_box : Icons.check_box_outline_blank,
-              color: selected ? AppColors.primary : AppColors.border,
-              size: 22,
+            Container(
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                color: selected ? AppColors.primary : Colors.white,
+                borderRadius: BorderRadius.circular(AppRadius.xs),
+                border: selected
+                    ? null
+                    : Border.all(color: const Color(0xFFD7C9C7)),
+              ),
+              child: selected
+                  ? const Icon(Icons.check, color: Colors.white, size: 15)
+                  : null,
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -165,6 +177,8 @@ class _DayCard extends StatelessWidget {
                         'Rp 20.000',
                         style: AppTextStyles.caption.copyWith(
                           color: AppColors.primary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
@@ -190,10 +204,11 @@ class _OrderSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
       decoration: BoxDecoration(
-        color: AppColors.accent,
-        borderRadius: BorderRadius.circular(9),
+        color: AppColors.peach,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        boxShadow: AppShadows.subtle,
       ),
       child: Column(
         children: [
@@ -207,13 +222,26 @@ class _OrderSummary extends StatelessWidget {
             )
           else
             ...order.selectedDayDetails.map(
-              (day) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Row(
+              (day) => SizedBox(
+                height: 44,
+                child: Column(
                   children: [
                     Expanded(
-                        child: Text(day.name, style: AppTextStyles.bodyMedium)),
-                    Text('Rp 20.000', style: AppTextStyles.bodyMedium),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child:
+                                Text(day.name, style: AppTextStyles.bodyMedium),
+                          ),
+                          Text('Rp 20.000', style: AppTextStyles.bodyMedium),
+                        ],
+                      ),
+                    ),
+                    if (day != order.selectedDayDetails.last)
+                      const Divider(
+                        height: 1,
+                        color: Color(0xFFF5D9A8),
+                      ),
                   ],
                 ),
               ),
@@ -226,7 +254,7 @@ class _OrderSummary extends StatelessWidget {
                   'Total Tagihan',
                   style: AppTextStyles.sectionTitle.copyWith(
                     color: AppColors.primary,
-                    fontSize: 20,
+                    fontSize: 22,
                   ),
                 ),
               ),
@@ -234,7 +262,7 @@ class _OrderSummary extends StatelessWidget {
                 demoRupiah(order.total),
                 style: AppTextStyles.sectionTitle.copyWith(
                   color: AppColors.primary,
-                  fontSize: 20,
+                  fontSize: 22,
                 ),
               ),
             ],
@@ -268,10 +296,10 @@ class _PaymentChoice extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFF9ECEB) : AppColors.accent,
-          borderRadius: BorderRadius.circular(9),
+          color: selected ? AppColors.selectedPink : AppColors.peach,
+          borderRadius: BorderRadius.circular(AppRadius.md),
           border: Border.all(
-            color: selected ? AppColors.borderStrong : Colors.transparent,
+            color: selected ? AppColors.borderSelected : Colors.transparent,
           ),
         ),
         child: Row(
@@ -291,7 +319,7 @@ class _PaymentChoice extends StatelessWidget {
             ),
             Icon(
               selected ? Icons.radio_button_checked : Icons.radio_button_off,
-              color: selected ? AppColors.primary : AppColors.textSecondary,
+              color: selected ? AppColors.primary : const Color(0xFF9A8F8F),
             ),
           ],
         ),

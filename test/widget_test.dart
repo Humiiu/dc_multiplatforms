@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:dc_multiplatforms/main.dart';
 import 'package:dc_multiplatforms/ui/demo_state.dart';
+import 'package:dc_multiplatforms/ui/history_page.dart';
 
 void main() {
   setUpAll(() {
@@ -46,14 +47,56 @@ void main() {
     await tester.tap(find.text('Register'));
     await tester.pumpAndSettle();
     expect(find.text('Username'), findsOneWidget);
+    expect(
+      tester.widget<Text>(find.text('Register')).style?.color,
+      Colors.white,
+    );
 
     await tester.tap(find.text('Login'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Sign In'));
     await tester.pumpAndSettle();
-    expect(find.text('Weekly Menu'), findsOneWidget);
+    expect(
+      tester.allWidgets.whereType<Text>().any(
+            (text) => text.data?.endsWith(', Humiiu!') ?? false,
+          ),
+      isTrue,
+    );
+    expect(find.text('DEBT LEFT', skipOffstage: false), findsOneWidget);
+    expect(find.byIcon(Icons.home), findsOneWidget);
+    expect(find.byIcon(Icons.restaurant_menu), findsOneWidget);
+    expect(find.byIcon(Icons.history), findsOneWidget);
+    expect(find.byIcon(Icons.person_outline), findsOneWidget);
 
     tester.view.resetPhysicalSize();
     tester.view.resetDevicePixelRatio();
+  });
+
+  testWidgets('history payment status is represented by icons only',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: MaterialApp(home: HistoryPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.receipt_long_outlined), findsOneWidget);
+    expect(find.text('Total Seluruh Ketring:'), findsOneWidget);
+    expect(find.text('Semua'), findsOneWidget);
+    expect(find.text('Sudah Lunas'), findsOneWidget);
+    expect(find.text('Belum Lunas'), findsOneWidget);
+    expect(find.text('Bayar Sekarang'), findsOneWidget);
+    expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
+    expect(
+      tester.widget<Icon>(find.byIcon(Icons.check_circle_outline)).size,
+      12,
+    );
+    await tester.scrollUntilVisible(
+      find.text('Rp 450.000'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.byIcon(Icons.error_outline), findsOneWidget);
   });
 }

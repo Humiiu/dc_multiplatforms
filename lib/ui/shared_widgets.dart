@@ -69,7 +69,7 @@ class DemoPrimaryButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      height: 56,
+      height: 52,
       child: FilledButton(
         onPressed: onPressed,
         style: FilledButton.styleFrom(
@@ -77,7 +77,7 @@ class DemoPrimaryButton extends StatelessWidget {
           foregroundColor: Colors.white,
           disabledBackgroundColor: AppColors.border,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(8),
           ),
           elevation: 8,
           shadowColor: AppColors.shadowPrimaryStrong,

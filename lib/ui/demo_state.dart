@@ -65,6 +65,7 @@ class DemoHistoryOrder {
 }
 
 class DemoOrderState extends ChangeNotifier {
+  // TODO(backend): replace mock order state with Firebase Realtime Database records.
   final Set<String> _selectedDays = {'senin', 'selasa'};
   DemoPaymentMethod _paymentMethod = DemoPaymentMethod.payLater;
   int? _debtPaymentTotal;

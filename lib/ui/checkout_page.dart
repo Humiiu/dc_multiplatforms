@@ -18,7 +18,7 @@ class CheckoutPage extends ConsumerWidget {
             const DemoTopBar(title: 'Checkout', showBack: true),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                padding: const EdgeInsets.fromLTRB(28, 0, 28, 20),
                 children: [
                   Container(
                     width: double.infinity,
@@ -27,10 +27,13 @@ class CheckoutPage extends ConsumerWidget {
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [Color(0xFFFFF1D9), Color(0xFFFFE8DC)],
+                        colors: [
+                          AppColors.surfaceVariant,
+                          AppColors.background,
+                        ],
                       ),
                       borderRadius: BorderRadius.vertical(
-                        bottom: Radius.circular(32),
+                        bottom: Radius.circular(AppRadius.xxl),
                       ),
                     ),
                     child: Column(
@@ -39,27 +42,42 @@ class CheckoutPage extends ConsumerWidget {
                           'TOTAL BILL',
                           style: AppTextStyles.bodyMedium.copyWith(
                             color: AppColors.textSecondary,
-                            letterSpacing: 1,
+                            letterSpacing: 1.2,
                           ),
                         ),
                         const SizedBox(height: 10),
-                        Text(
-                          demoRupiah(order.total),
-                          style: AppTextStyles.priceLarge.copyWith(
-                            color: AppColors.primary,
-                            fontSize: 40,
+                        RichText(
+                          text: TextSpan(
+                            style: AppTextStyles.priceLarge.copyWith(
+                              color: AppColors.primary,
+                              fontSize: 40,
+                            ),
+                            children: [
+                              const TextSpan(
+                                text: 'Rp ',
+                                style: TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 22,
+                                ),
+                              ),
+                              TextSpan(
+                                text: demoRupiah(order.total)
+                                    .replaceFirst('Rp ', ''),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 46),
-                  Text('Payment Method', style: AppTextStyles.sectionTitle),
+                  const SizedBox(height: 28),
+                  Text('Payment Method',
+                      style: AppTextStyles.sectionTitle.copyWith(fontSize: 22)),
                   const SizedBox(height: 18),
                   _CheckoutMethodCard(
                     title: 'QRIS',
                     detail:
-                        'Scan QR code dengan aplikasi e-wallet atau m-banking pilihanmu.',
+                        'Scan the QR code with your preferred e-wallet or mobile banking app.',
                     selected: order.paymentMethod == DemoPaymentMethod.qris ||
                         order.paymentMethod == DemoPaymentMethod.payLater,
                     icon: Icons.qr_code_2,
@@ -70,7 +88,7 @@ class CheckoutPage extends ConsumerWidget {
                   _CheckoutMethodCard(
                     title: 'Virtual Account',
                     detail:
-                        'Transfer melalui ATM, Internet Banking, atau Mobile Banking.',
+                        'Transfer through an ATM, internet banking, or mobile banking.',
                     selected:
                         order.paymentMethod == DemoPaymentMethod.virtualAccount,
                     icon: Icons.account_balance_outlined,
@@ -81,7 +99,7 @@ class CheckoutPage extends ConsumerWidget {
                   ),
                   _CheckoutMethodCard(
                     title: 'E-Wallet',
-                    detail: 'GoPay, OVO, ShopeePay, Dana, LinkAja.',
+                    detail: 'GoPay, OVO, ShopeePay, Dana, and LinkAja.',
                     selected: order.paymentMethod == DemoPaymentMethod.eWallet,
                     icon: Icons.wallet_outlined,
                     banks: const ['G', 'O', 'S'],
@@ -104,7 +122,7 @@ class CheckoutPage extends ConsumerWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          'Total Tagihan',
+                          'Total Bill',
                           style: AppTextStyles.bodyLarge.copyWith(
                             color: AppColors.textSecondary,
                           ),
@@ -118,7 +136,7 @@ class CheckoutPage extends ConsumerWidget {
                   ),
                   const SizedBox(height: 14),
                   DemoPrimaryButton(
-                    label: 'Bayar Sekarang',
+                    label: 'Pay Now',
                     icon: Icons.lock,
                     onPressed: order.total == 0
                         ? null
@@ -136,11 +154,6 @@ class CheckoutPage extends ConsumerWidget {
                             );
                             context.go('/history');
                           },
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Demo lokal • tidak memproses pembayaran',
-                    style: AppTextStyles.caption.copyWith(fontSize: 10),
                   ),
                 ],
               ),
@@ -175,13 +188,13 @@ class _CheckoutMethodCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 14),
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFF9ECEB) : AppColors.accent,
-          borderRadius: BorderRadius.circular(17),
+          color: selected ? AppColors.selectedPink : AppColors.peach,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
           border: Border.all(
-            color: selected ? AppColors.primary : Colors.transparent,
-            width: selected ? 1.5 : 1,
+            color: selected ? AppColors.primaryDark : Colors.transparent,
+            width: selected ? 2 : 1,
           ),
         ),
         child: Column(
@@ -195,36 +208,54 @@ class _CheckoutMethodCard extends StatelessWidget {
                   ...banks.map(
                     (bank) => Container(
                       margin: const EdgeInsets.only(left: 4),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 4),
+                      width: banks.length > 2 ? 24 : null,
+                      height: banks.length > 2 ? 24 : null,
+                      padding: banks.length > 2
+                          ? EdgeInsets.zero
+                          : const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 4),
                       decoration: BoxDecoration(
-                        color: bank == 'G'
+                        color: banks.length > 2 && bank == 'G'
                             ? const Color(0xFF00AED6)
-                            : bank == 'O'
+                            : banks.length > 2 && bank == 'O'
                                 ? const Color(0xFF4F35A8)
-                                : bank == 'S'
+                                : banks.length > 2 && bank == 'S'
                                     ? const Color(0xFFF44336)
                                     : Colors.white,
-                        borderRadius: BorderRadius.circular(5),
+                        shape: banks.length > 2
+                            ? BoxShape.circle
+                            : BoxShape.rectangle,
+                        borderRadius:
+                            banks.length > 2 ? null : BorderRadius.circular(4),
                       ),
-                      child: Text(
-                        bank,
-                        style: AppTextStyles.caption.copyWith(
-                          fontSize: 8,
-                          fontWeight: FontWeight.w700,
-                          color: bank.length == 1
-                              ? Colors.white
-                              : AppColors.textSecondary,
+                      child: Center(
+                        child: Text(
+                          bank,
+                          style: AppTextStyles.caption.copyWith(
+                            fontSize: banks.length > 2 ? 9 : 8,
+                            fontWeight: FontWeight.w700,
+                            color: banks.length > 2
+                                ? Colors.white
+                                : AppColors.textSecondary,
+                          ),
                         ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 10),
                 ] else ...[
-                  Icon(
-                    icon,
-                    color: AppColors.primary,
-                    size: 27,
+                  Container(
+                    width: 42,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Icon(
+                      icon,
+                      color: AppColors.primary,
+                      size: 22,
+                    ),
                   ),
                   const SizedBox(width: 10),
                 ],
@@ -233,6 +264,7 @@ class _CheckoutMethodCard extends StatelessWidget {
                       ? Icons.radio_button_checked
                       : Icons.radio_button_off,
                   color: selected ? AppColors.primary : AppColors.border,
+                  size: 24,
                 ),
               ],
             ),
@@ -241,7 +273,10 @@ class _CheckoutMethodCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: Text(detail, style: AppTextStyles.bodySmall),
+                  child: Text(
+                    detail,
+                    style: AppTextStyles.bodySmall.copyWith(fontSize: 15),
+                  ),
                 ),
                 if (banks.isNotEmpty) const SizedBox(width: 32),
               ],

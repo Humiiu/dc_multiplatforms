@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import '../core/theme.dart';
+import '../services/admin_whatsapp_service.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -18,8 +20,9 @@ class ProfilePage extends StatelessWidget {
                 width: 124,
                 height: 124,
                 decoration: BoxDecoration(
-                  color: AppColors.accent,
-                  borderRadius: BorderRadius.circular(16),
+                  color: AppColors.surfaceVariant,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFE8DADA)),
                 ),
                 child: const Icon(
                   Icons.person,
@@ -57,9 +60,9 @@ class ProfilePage extends StatelessWidget {
             const SizedBox(height: 42),
             _ProfileAction(
               icon: Icons.edit_outlined,
-              color: AppColors.primary,
+              color: const Color(0xFFA40B42),
               title: 'Edit Profile',
-              subtitle: 'update',
+              subtitle: 'Update your personal information',
               onTap: () => _showDemoDialog(context, 'Edit Profile'),
             ),
             const SizedBox(height: 14),
@@ -67,25 +70,27 @@ class ProfilePage extends StatelessWidget {
               icon: Icons.lock_outline,
               color: AppColors.gold,
               title: 'Ubah Password',
-              subtitle: 'pw',
+              subtitle: 'Secure your account',
               onTap: () => _showDemoDialog(context, 'Ubah Password'),
             ),
             const SizedBox(height: 14),
             _ProfileAction(
               icon: Icons.headset_mic_outlined,
-              color: AppColors.primary,
+              color: const Color(0xFF9B0053),
               title: 'Hubungi Admin',
-              subtitle: 'pengen curhat? yu sini',
-              onTap: () => _showDemoDialog(context, 'Hubungi Admin'),
+              subtitle: 'Get help with your orders',
+              onTap: () => _showAdminSheet(context),
             ),
             const SizedBox(height: 36),
-            TextButton.icon(
-              onPressed: () => context.go('/auth'),
-              icon: const Icon(Icons.logout, size: 18),
-              label: const Text('Logout'),
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.error,
-                textStyle: AppTextStyles.bodyMediumBold,
+            Center(
+              child: TextButton.icon(
+                onPressed: () => context.go('/auth'),
+                icon: const Icon(Icons.logout, size: 18),
+                label: const Text('Logout'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.error,
+                  textStyle: AppTextStyles.bodyMediumBold,
+                ),
               ),
             ),
           ],
@@ -109,6 +114,128 @@ class ProfilePage extends StatelessWidget {
       ),
     );
   }
+
+  void _showAdminSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        final options = [
+          _AdminSheetOption(
+            title: 'Request menu khusus',
+            onTap: () {
+              Navigator.pop(sheetContext);
+              AdminWhatsappService.open(
+                purpose: AdminWhatsappPurpose.menuRequest,
+                name: 'Humiiu',
+                kelas: 'XII IPS 2',
+                details: 'Menu favorit saya...',
+              );
+            },
+          ),
+          _AdminSheetOption(
+            title: 'Alergi / preferensi makanan',
+            onTap: () {
+              Navigator.pop(sheetContext);
+              AdminWhatsappService.open(
+                purpose: AdminWhatsappPurpose.allergyPreference,
+                name: 'Humiiu',
+                kelas: 'XII IPS 2',
+                details: 'Saya tidak suka pedas dan alergi kacang',
+              );
+            },
+          ),
+          _AdminSheetOption(
+            title: 'Keluhan',
+            onTap: () {
+              Navigator.pop(sheetContext);
+              AdminWhatsappService.open(
+                purpose: AdminWhatsappPurpose.complaint,
+                name: 'Humiiu',
+                kelas: 'XII IPS 2',
+                details: 'Ada masalah pada pengiriman minggu ini',
+              );
+            },
+          ),
+          _AdminSheetOption(
+            title: 'Butuh bantuan lain',
+            onTap: () {
+              Navigator.pop(sheetContext);
+              AdminWhatsappService.open(
+                purpose: AdminWhatsappPurpose.other,
+                name: 'Humiiu',
+                kelas: 'XII IPS 2',
+                details: 'Saya butuh bantuan terkait pesanan saya',
+              );
+            },
+          ),
+        ];
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 48,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  'Hubungi Admin',
+                  style: AppTextStyles.sectionTitle.copyWith(fontSize: 22),
+                ),
+                const SizedBox(height: 12),
+                ...options.map(
+                  (option) => Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      tileColor: AppColors.surfaceVariant,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      leading: const Icon(
+                        Icons.chat_bubble_outline,
+                        color: AppColors.primary,
+                      ),
+                      title: Text(
+                        option.title,
+                        style: AppTextStyles.bodyMediumBold,
+                      ),
+                      trailing: const Icon(
+                        Icons.arrow_forward_ios,
+                        size: 14,
+                        color: AppColors.textSecondary,
+                      ),
+                      onTap: option.onTap,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _AdminSheetOption {
+  final String title;
+  final VoidCallback onTap;
+
+  const _AdminSheetOption({
+    required this.title,
+    required this.onTap,
+  });
 }
 
 class _ProfileTag extends StatelessWidget {
@@ -121,7 +248,7 @@ class _ProfileTag extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
       decoration: BoxDecoration(
-        color: AppColors.accent,
+        color: const Color(0xFFFFDEA5),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(label, style: AppTextStyles.caption),
@@ -147,13 +274,13 @@ class _ProfileAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.surfaceVariant,
-      borderRadius: BorderRadius.circular(10),
+      color: const Color(0xFFFFEBCD),
+      borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(16),
           child: Row(
             children: [
               Container(
@@ -171,7 +298,10 @@ class _ProfileAction extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(title, style: AppTextStyles.bodyMediumBold),
-                    Text(subtitle, style: AppTextStyles.bodySmall),
+                    Text(
+                      subtitle,
+                      style: AppTextStyles.bodySmall.copyWith(fontSize: 13),
+                    ),
                   ],
                 ),
               ),
