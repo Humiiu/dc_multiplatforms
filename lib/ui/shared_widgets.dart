@@ -77,7 +77,7 @@ class DemoPrimaryButton extends StatelessWidget {
           foregroundColor: Colors.white,
           disabledBackgroundColor: AppColors.border,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppRadius.md),
           ),
           elevation: 8,
           shadowColor: AppColors.shadowPrimaryStrong,
