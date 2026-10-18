@@ -36,7 +36,7 @@ Catatan desain: Figma MCP berhasil memberikan design context dan screenshot untu
 ## 4. Package/dependency yang ditambahkan
 
 - `url_launcher: ^6.3.0` — untuk membuka link WhatsApp admin ke URL external application.
-- `google_fonts: ^6.2.1` — agar teks mengikuti desain dengan Playfair Display, Plus Jakarta Sans, dan fallback sans serif.
+- `google_fonts: ^6.3.3` — agar teks mengikuti desain dengan Playfair Display, Plus Jakarta Sans, dan fallback sans serif. Dinaikkan dari `^6.3.0` karena 6.3.0 gagal dikompilasi pada Flutter 3.47/Dart 3.13 (error `const` map dengan key `FontWeight`); 6.3.2 sudah membuat map tersebut non-const dan 6.3.3 menghapus pemakaian `FontWeight.index` yang deprecated.
 
 ## 5. Data dummy/mock yang dipakai
 
@@ -76,3 +76,32 @@ Catatan desain: Figma MCP berhasil memberikan design context dan screenshot untu
 - File UI yang boleh disentuh oleh backend: `lib/ui/*`, `lib/core/*`, `lib/services/admin_whatsapp_service.dart`, `lib/widgets/*`.
 - File yang tidak boleh diubah tanpa koordinasi frontend: semua file UI yang sudah dibuat dan semua design token/widget reusable. Backend hanya boleh menambahkan integrasi di area yang sudah dibubuhi `TODO(backend): ...`, bukan mengganti layout/tema.
 - Semua perubahan backend harus tetap menjaga frontend-only scope dan tidak mengubah struktur besar aplikasi atau dependency inti tanpa dicatat di log ini.
+
+## 10. Perbaikan build & lingkungan (16 Okt 2026)
+
+Task: memperbaiki agar proyek bisa di-build/dijalankan di laptop ini (di PC user sebelumnya sudah bisa).
+Tidak ada perubahan UI, layout, tema, atau logic aplikasi pada task ini.
+
+Penyebab dan perbaikan:
+
+- `android/gradle/wrapper/gradle-wrapper.properties`: Gradle `8.13` → `8.14`. Flutter 3.47 menolak Gradle di bawah 8.14.
+- `android/settings.gradle`: Kotlin (`org.jetbrains.kotlin.android`) `1.9.24` → `2.2.20`. Flutter 3.47 memerlukan Kotlin minimal 2.2.20, build gagal dengan pesan "Your project's Kotlin version is lower than Flutter's minimum supported version of 2.2.20".
+- `pubspec.yaml` + `pubspec.lock`: `google_fonts` `^6.3.0` → `^6.3.3`. Versi 6.3.0 (yang terkunci di lock file) gagal dikompilasi pada Dart 3.13.
+
+Verifikasi yang sudah dijalankan:
+
+- `flutter pub get` — sukses, `google_fonts` terpasang 6.3.3.
+- `flutter build apk --debug` — **berhasil** (`√ Built build\app\outputs\flutter-apk\app-debug.apk`, 412.6s). Ini task `assembleDebug` yang tadinya gagal.
+- `flutter build web --debug` — **berhasil** (`√ Built build\web`, 84.0s). Ini target tempat error `google_fonts` pertama kali muncul.
+- `flutter analyze` — 0 error; 4 issue lama (1 unused import, 2 `unawaited_return_in_try_block`, 1 deprecation `value`), bukan dari perubahan ini.
+- `flutter test` — 34 test, semuanya lulus.
+- `flutter run -d web-server --web-port 8091 --debug` — **berhasil**: app ter-build dan tersaji di `http://localhost:8091` (perintah `flutter run` yang tadinya gagal). Proses dihentikan lagi setelah verifikasi.
+- `git diff --check` — bersih.
+
+Belum diverifikasi: menjalankan app di perangkat/emulator Android. `flutter devices` di laptop ini hanya mendeteksi Windows desktop, Chrome, dan Edge (tidak ada device/emulator Android), jadi `assembleDebug` yang tadinya gagal sudah dipastikan lolos, tetapi instalasi ke perangkat Android belum dicoba.
+
+Peringatan yang masih ada (belum dikerjakan, hanya warning, tidak memblokir build):
+
+- Flutter memperingatkan Gradle 8.14 dan AGP 8.11.1 dan Kotlin 2.2.20 akan segera di-drop; disarankan Gradle ≥ 9.1.0, AGP ≥ 9.0.1, Kotlin ≥ 2.3.20. Belum dinaikkan karena AGP 9 mengubah DSL (`android.newDsl`) dan berisiko merusak konfigurasi yang ada.
+- `android/app/build.gradle` masih `sourceCompatibility`/`targetCompatibility` Java 8 (muncul warning "source value 8 is obsolete").
+- Toolchain laptop: Flutter 3.47.7, Dart 3.13.5.
