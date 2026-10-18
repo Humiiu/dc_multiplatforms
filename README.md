@@ -2,7 +2,6 @@
 
 -
 
-## Menjalankan aplikasi
 
 ```sh
 flutter pub get
