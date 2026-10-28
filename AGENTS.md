@@ -55,7 +55,8 @@ Rules ini berlaku untuk seluruh proses development aplikasi Dian Catering (desai
 
 ### H. Protokol Git Commit & Backup Antar Perangkat (WAJIB SETIAP MILESTONE / PROGRES)
 - Setiap kali suatu task/revisi/fitur selesai dan lulus verifikasi (`flutter analyze` & `flutter test` bersih):
-  - **Wajib lakukan Git Commit** dengan pesan terstruktur dan deskriptif (misal: `feat(history): align header with latest design`, `feat(home): add pull-to-refresh`).
+  - **Wajib lakukan Git Commit** dengan gaya pesan: **Bahasa Indonesia santai/gaul, huruf kecil semua di awal (tanpa kapital), yang penting ada inti informasinya** (contoh: `revisi desain home page`, `benerin navbar history`, `gatau, buat ganti device`, `pasang pull to refresh di home`).
+  - *Catatan*: Gaya santai dan huruf kecil ini KHUSUS untuk pesan `git commit` saja. Output respons chat asisten TETAP rapi, profesional, dan terstruktur seperti biasa.
   - Ini memastikan tersedianya checkpoint aman kapan pun dibutuhkan rollback / reverse jika ada bug fatal.
   - Berikan pengingat atau jalankan push (`git push origin master`) agar kode tersimpan aman di cloud repository GitHub (`https://github.com/Humiiu/dc_multiplatforms`) untuk sinkronisasi antar perangkat ngoding.
 

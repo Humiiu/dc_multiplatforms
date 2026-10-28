@@ -121,7 +121,7 @@ Rules ini universal: desain, frontend, backend, bugfix, refactor, apa pun.
 
 ## 11. Git & Backup Antar Perangkat
 - Setiap selesai satu task / progres fitur / revisi UI dan terverifikasi bersih (analyze + test lulus):
-  - Lakukan git commit secara berkala (checkpoint aman) dengan pesan deskriptif.
+  - Lakukan git commit secara berkala (checkpoint aman) dengan format pesan: Bahasa Indonesia santai/gaul, huruf kecil semua di awal (tanpa kapital), yang penting ada inti informasinya (contoh: `revisi desain home page`, `benerin navbar history`, `gatau, buat ganti device`). Gaya santai ini KHUSUS untuk commit saja; output chat asisten tetap rapi/profesional.
   - Ini memastikan jika terjadi bug fatal, kode dapat di-reverse/revert kapan pun dengan aman (`git revert` / `git checkout`).
   - Berikan pengingat atau jalankan push (`git push origin master`) agar tersimpan di cloud GitHub sebagai backup untuk sinkronisasi di semua perangkat ngoding.
 
