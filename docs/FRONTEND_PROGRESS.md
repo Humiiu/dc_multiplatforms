@@ -189,3 +189,26 @@ Perubahan:
 Verifikasi:
 - `flutter analyze` — 0 error, 0 warning (bersih).
 - `flutter test` — 34 test seluruhnya lulus.
+
+## 16. Penyelarasan Tipografi, Header Brand DIAN CATERING, dan Konsistensi Tombol (29 Okt 2026)
+
+Task: Menyelaraskan font Weekly Menu, memperbaiki ukuran tombol preferensi di Home, menyeragamkan bahasa tombol CTA di History, dan memasang top bar brand DIAN CATERING dengan tombol bantuan [?].
+
+Perubahan:
+- `lib/core/theme.dart`:
+  * Mengubah `AppText.sectionTitle` ('Weekly Menu') dari Playfair Display menjadi `GoogleFonts.plusJakartaSans` w600 (SemiBold) 18 dp.
+- `lib/ui/shared_widgets.dart`:
+  * Memperbarui `DemoTopBar` dengan mode `showBrand`: menampilkan logo bulat `assets/logo.png` (24 dp) + teks `DIAN CATERING` (`Playfair Display` 14 dp w700 letterSpacing 1.2 maroon) di kiri, serta tombol rounded `[ ? ]` di kanan.
+- `lib/ui/home_page.dart`:
+  * Menggunakan `DemoTopBar(showBrand: true, onHelpTap: () => _showHelpSheet(context))`.
+  * Menambahkan `_showHelpSheet` berisi modal panduan katering: batas waktu order (maks 21:30 WIB), syarat pay later / ngutang (plafon maks Rp 100.000), dan tombol hubungi WhatsApp admin.
+  * Mengubah `_OutlinedPill` ('Atur Preferensi') menjadi ringkas/compact (lebar 156 dp, tinggi 38 dp, radius 12 dp) dengan `GoogleFonts.plusJakartaSans` w600, sesuai desain referensi.
+  * Memperbarui `_PrimaryButton` ('Start Buying!') agar menggunakan `GoogleFonts.plusJakartaSans` w600.
+- `lib/ui/history_page.dart`:
+  * Menyeragamkan label tombol pelunasan dari 'Bayar Sekarang' menjadi 'Pay Now' agar konsisten dengan Home & Order.
+- `test/widget_test.dart`:
+  * Menyesuaikan ekspektasi test tombol menjadi 'Pay Now'.
+
+Verifikasi:
+- `flutter analyze` — 0 error, 0 warning (bersih).
+- `flutter test` — 34 test seluruhnya lulus.

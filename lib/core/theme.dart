@@ -397,8 +397,8 @@ class AppText {
   static TextStyle get amount => GoogleFonts.playfairDisplay(
         fontSize: 46, fontWeight: FontWeight.w700, color: AppColors.ink, height: 1.0);
 
-  static TextStyle get sectionTitle => GoogleFonts.playfairDisplay(
-        fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.ink, height: 1.2);
+  static TextStyle get sectionTitle => GoogleFonts.plusJakartaSans(
+        fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.ink, height: 1.2);
 
   // --- Plus Jakarta Sans ---
   static TextStyle get overline => GoogleFonts.plusJakartaSans(

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -70,7 +71,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
           children: [
-            const DemoTopBar(),
+            DemoTopBar(showBrand: true, onHelpTap: () => _showHelpSheet(context)),
             const SizedBox(height: 8),
             Text('WELCOME', style: AppText.overline),
             const SizedBox(height: 4),
@@ -104,6 +105,83 @@ class _HomePageState extends ConsumerState<HomePage> {
         ),
       ),
       ),
+    );
+  }
+
+  void _showHelpSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE0D8D6),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  'Panduan & Informasi',
+                  style: GoogleFonts.playfairDisplay(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const _HelpInfoTile(
+                  icon: Icons.access_time_rounded,
+                  title: 'Batas Waktu Order',
+                  description:
+                      'Pemesanan untuk menu esok hari ditutup setiap malam maksimal pukul 21:30 WIB.',
+                ),
+                const SizedBox(height: 12),
+                const _HelpInfoTile(
+                  icon: Icons.receipt_long_outlined,
+                  title: 'Ketentuan Pay Later (Ngutang)',
+                  description:
+                      'Maksimal plafon tagihan berjalan adalah Rp 100.000. Pelunasan dilakukan setiap hari Jumat / akhir minggu.',
+                ),
+                const SizedBox(height: 12),
+                const _HelpInfoTile(
+                  icon: Icons.chat_outlined,
+                  title: 'Hubungi Admin',
+                  description:
+                      'Perlu konfirmasi pembayaran atau punya pertanyaan? Hubungi admin katering kami via WhatsApp.',
+                ),
+                const SizedBox(height: 20),
+                DemoPrimaryButton(
+                  label: 'Chat WhatsApp Admin',
+                  icon: Icons.chat,
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    AdminWhatsappService.open(
+                      purpose: AdminWhatsappPurpose.other,
+                      name: 'Humiiu',
+                      kelas: 'XII IPS 2',
+                      details: 'Halo admin, saya butuh bantuan terkait katering',
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -917,8 +995,7 @@ class _PrimaryButton extends StatelessWidget {
           child: Center(
             child: Text(
               label,
-              style: const TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
+              style: GoogleFonts.plusJakartaSans(
                 color: Colors.white,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -945,10 +1022,11 @@ class _OutlinedPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 42,
+      width: 156,
+      height: 38,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(AppRadius.pill),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: const Color(0x269E003A), // 15% Maroon outline
           width: 1.2,
@@ -964,24 +1042,82 @@ class _OutlinedPill extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(AppRadius.pill),
+          borderRadius: BorderRadius.circular(12),
           onTap: onPressed,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 26),
-            child: Center(
-              child: Text(
-                label,
-                style: const TextStyle(
-                  fontFamily: 'Plus Jakarta Sans',
-                  color: AppColors.primaryDark,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.2,
-                ),
+          child: Center(
+            child: Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(
+                color: AppColors.primaryDark,
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.2,
               ),
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _HelpInfoTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String description;
+
+  const _HelpInfoTile({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFDEA5),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: AppColors.primaryDark, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.ink,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  description,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w400,
+                    color: AppColors.inkVariant,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1,15 +1,90 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../core/theme.dart';
 
 class DemoTopBar extends StatelessWidget {
   final String? title;
   final bool showBack;
+  final bool showBrand;
+  final VoidCallback? onHelpTap;
 
-  const DemoTopBar({super.key, this.title, this.showBack = false});
+  const DemoTopBar({
+    super.key,
+    this.title,
+    this.showBack = false,
+    this.showBrand = false,
+    this.onHelpTap,
+  });
 
   @override
   Widget build(BuildContext context) {
+    if (showBrand) {
+      return SizedBox(
+        height: 48,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: const Color(0x339E003A), width: 1),
+                    image: const DecorationImage(
+                      image: AssetImage('assets/logo.png'),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'DIAN CATERING',
+                  style: GoogleFonts.playfairDisplay(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
+                    color: AppColors.primaryDark,
+                  ),
+                ),
+              ],
+            ),
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: onHelpTap,
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  width: 30,
+                  height: 30,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceVariant,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: const Color(0x339E003A),
+                      width: 1.2,
+                    ),
+                  ),
+                  child: Text(
+                    '?',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryDark,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return SizedBox(
       height: 64,
       child: Row(

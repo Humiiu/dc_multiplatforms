@@ -90,7 +90,7 @@ void main() {
     expect(find.text('Semua'), findsOneWidget);
     expect(find.text('Sudah Lunas'), findsOneWidget);
     expect(find.text('Belum Lunas'), findsOneWidget);
-    expect(find.text('Bayar Sekarang'), findsOneWidget);
+    expect(find.text('Pay Now'), findsOneWidget);
     expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
     expect(
       tester.widget<Icon>(find.byIcon(Icons.check_circle_outline)).size,

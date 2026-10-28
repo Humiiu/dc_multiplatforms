@@ -220,7 +220,7 @@ class _HistoryCard extends StatelessWidget {
               if (!order.isPaid) ...[
                 const SizedBox(height: 10),
                 DemoPrimaryButton(
-                  label: 'Bayar Sekarang',
+                  label: 'Pay Now',
                   icon: Icons.arrow_forward,
                   onPressed: onPay,
                 ),
