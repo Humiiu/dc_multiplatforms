@@ -76,7 +76,7 @@ class DatabaseService {
       final data = snap.value as Map;
       final uid = data['uid'] as String?;
       if (uid == null || uid.isEmpty) return null;
-      return getUser(uid);
+      return await getUser(uid);
     } catch (e) {
       debugPrint('[DatabaseService] getUserByUsername error: $e');
       return null;
@@ -103,7 +103,7 @@ class DatabaseService {
     try {
       final uid = await getUidByPhone(phone);
       if (uid == null) return null;
-      return getUser(uid);
+      return await getUser(uid);
     } catch (e) {
       debugPrint('[DatabaseService] getUserByPhone error: $e');
       return null;

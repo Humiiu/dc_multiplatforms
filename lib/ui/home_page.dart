@@ -13,52 +13,34 @@ import 'shared_widgets.dart';
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
-  static const List<_WeeklyMenuItem> _weeklyMenus = [
-    _WeeklyMenuItem(
-      date: 'Senin, 27 Okt',
-      title: 'Nasi Liwet Ayam Goreng',
-      subtitle: 'Tempe goreng, sambal',
-    ),
-    _WeeklyMenuItem(
-      date: 'Selasa, 28 Okt',
-      title: 'Ayam Telur Asin',
-      subtitle: 'Martabak tahu, kacang panjang',
-    ),
-    _WeeklyMenuItem(
-      date: 'Rabu, 29 Okt',
-      title: 'Ayam Hot Lava',
-      subtitle: 'Tahu krispi, timun',
-    ),
-    _WeeklyMenuItem(
-      date: 'Kamis, 30 Okt',
-      title: 'Ayam Teriyaki',
-      subtitle: 'Nasi, sayuran, wijen',
-    ),
-    _WeeklyMenuItem(
-      date: 'Jumat, 31 Okt',
-      title: 'Nasi Goreng Spesial',
-      subtitle: 'Telur, ayam suwir, kerupuk',
-    ),
-  ];
-
   @override
   ConsumerState<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
-  late final String _greeting;
+  late String _greeting;
   late final PageController _menuController;
   Timer? _menuTimer;
+
+  Future<void> _onRefresh() async {
+    // TODO(backend): refresh menu mingguan, status tagihan, dan profil user dari Firebase/API.
+    await Future.delayed(const Duration(milliseconds: 700));
+    if (mounted) {
+      setState(() {
+        _greeting = getRandomGreeting();
+      });
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     _greeting = getRandomGreeting();
-    _menuController = PageController(viewportFraction: 0.72);
+    _menuController = PageController(viewportFraction: 0.70);
     _menuTimer = Timer.periodic(const Duration(seconds: 4), (_) {
       if (!_menuController.hasClients) return;
       final currentPage = _menuController.page?.round() ?? 0;
-      final nextPage = (currentPage + 1) % HomePage._weeklyMenus.length;
+      final nextPage = (currentPage + 1) % _kMenus.length;
       _menuController.animateToPage(
         nextPage,
         duration: const Duration(milliseconds: 450),
@@ -77,73 +59,50 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       body: SafeArea(
         bottom: false,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(28, 8, 28, 24),
+        child: RefreshIndicator(
+          color: AppColors.primary,
+          backgroundColor: Colors.white,
+          onRefresh: _onRefresh,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
           children: [
             const DemoTopBar(),
             const SizedBox(height: 8),
-            Text(
-              'WELCOME',
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
-                letterSpacing: 0.6,
-              ),
-            ),
-            Text(
-              '$_greeting, Humiiu!',
-              style: AppTextStyles.welcome.copyWith(
-                fontSize: 29,
-                color: AppColors.textPrimary,
-              ),
-            ),
+            Text('WELCOME', style: AppText.overline),
+            const SizedBox(height: 4),
+            Text('$_greeting, Humiiu!', style: AppText.greeting),
             const SizedBox(height: 24),
             _DebtCard(
               onTap: () {
-                ref.read(demoOrderProvider).prepareDebtPayment(60000);
+                ref.read(demoOrderProvider.notifier).prepareDebtPayment(60000);
                 context.push('/checkout');
               },
             ),
-            const SizedBox(height: 26),
-            DemoSectionTitle(
-              title: 'Weekly Menu',
-              trailing: TextButton(
-                onPressed: () => context.go('/order'),
-                child: const Text('See All ›'),
-              ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 218,
-              child: PageView.builder(
-                controller: _menuController,
-                itemCount: HomePage._weeklyMenus.length,
-                itemBuilder: (context, index) {
-                  final item = HomePage._weeklyMenus[index];
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 16),
-                    child: _MenuCard(
-                      date: item.date,
-                      title: item.title,
-                      subtitle: item.subtitle,
-                    ),
-                  );
-                },
-              ),
-            ),
             const SizedBox(height: 28),
-            _PreferenceCard(
-              onTap: () => _showAdminSheet(context),
+            _SectionHeader(
+              title: 'Weekly Menu',
+              onSeeAll: () => context.push('/order'),
+            ),
+            const SizedBox(height: 14),
+            _MenuCarousel(
+              controller: _menuController,
+              menus: _kMenus,
+            ),
+            const SizedBox(height: 32),
+            _RequestCard(onTap: () => _showAdminSheet(context)),
+            const SizedBox(height: 24),
+            _PrimaryButton(
+              label: 'Start Buying!',
+              onPressed: () => context.push('/order'),
             ),
             const SizedBox(height: 24),
-            DemoPrimaryButton(
-              label: 'Start Buying!',
-              onPressed: () => context.go('/order'),
-            ),
-            const SizedBox(height: 20),
           ],
         ),
+      ),
       ),
     );
   }
@@ -152,7 +111,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     showModalBottomSheet<void>(
       context: context,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
       ),
       builder: (sheetContext) {
         final options = [
@@ -236,7 +195,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 const SizedBox(height: 18),
                 Text(
                   'Hubungi Admin',
-                  style: AppTextStyles.sectionTitle.copyWith(fontSize: 22),
+                  style: AppText.sectionTitle.copyWith(fontSize: 22),
                 ),
                 const SizedBox(height: 12),
                 ...options.map(
@@ -277,6 +236,55 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 }
 
+// ============================================================================
+// Data model for menu items
+// ============================================================================
+class HomeMenuItem {
+  final String dayLabel;
+  final String title;
+  final String subtitle;
+  final String? image;
+
+  const HomeMenuItem({
+    required this.dayLabel,
+    required this.title,
+    required this.subtitle,
+    this.image,
+  });
+}
+
+const List<HomeMenuItem> _kMenus = [
+  HomeMenuItem(
+    dayLabel: 'Senin, 27 Okt',
+    title: 'Ayam Telor Asin',
+    subtitle: 'lorem',
+  ),
+  HomeMenuItem(
+    dayLabel: 'Selasa, 28 Okt',
+    title: 'Mie Chili Oil',
+    subtitle: 'lorem',
+  ),
+  HomeMenuItem(
+    dayLabel: 'Rabu, 29 Okt',
+    title: 'Ayam Hot Lava',
+    subtitle: 'Tahu krispi, timun',
+  ),
+  HomeMenuItem(
+    dayLabel: 'Kamis, 30 Okt',
+    title: 'Ayam Teriyaki',
+    subtitle: 'Nasi, sayuran, wijen',
+  ),
+  HomeMenuItem(
+    dayLabel: 'Jumat, 31 Okt',
+    title: 'Nasi Goreng Spesial',
+    subtitle: 'Telur, ayam suwir, kerupuk',
+  ),
+];
+
+// ============================================================================
+// Helper classes
+// ============================================================================
+
 class _AdminSheetOption {
   final String title;
   final VoidCallback onTap;
@@ -287,18 +295,11 @@ class _AdminSheetOption {
   });
 }
 
-class _WeeklyMenuItem {
-  final String date;
-  final String title;
-  final String subtitle;
-
-  const _WeeklyMenuItem({
-    required this.date,
-    required this.title,
-    required this.subtitle,
-  });
-}
-
+// ---------------------------------------------------------------------------
+// Debt Card (Sisa Tagihan / Hutang)
+// Presisi: Soft radial glow, Pill status, Playfair Display amount,
+// serta full-width Maroon gradient button dengan shadow glow.
+// ---------------------------------------------------------------------------
 class _DebtCard extends StatelessWidget {
   final VoidCallback onTap;
 
@@ -308,74 +309,139 @@ class _DebtCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-        boxShadow: AppShadows.cardElevated,
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0F261900), // Soft ink shadow
+            blurRadius: 24,
+            offset: Offset(0, 8),
+            spreadRadius: 0,
+          ),
+          BoxShadow(
+            color: Color(0x069E003A), // Subtle maroon tint
+            blurRadius: 10,
+            offset: Offset(0, 2),
+            spreadRadius: 0,
+          ),
+        ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadius.xl),
+        borderRadius: BorderRadius.circular(24),
         child: Stack(
           children: [
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
+            // Ambient soft warm glow at top right (fades out smoothly)
+            Positioned(
+              top: -40,
+              right: -40,
+              child: Container(
+                width: 220,
+                height: 220,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
                   gradient: RadialGradient(
-                    center: const Alignment(0.9, -0.9),
-                    radius: 1.4,
-                    colors: [AppColors.surfaceVariant, Colors.white],
+                    colors: [
+                      Color(0x40FFDF9E), // Warm golden peach glow
+                      Color(0x18FFDF9E),
+                      Color(0x00FFDF9E),
+                    ],
+                    stops: [0.0, 0.5, 1.0],
+                  ),
+                ),
+              ),
+            ),
+            // Very subtle cool/tint glow at bottom left
+            Positioned(
+              bottom: -50,
+              left: -50,
+              child: Container(
+                width: 160,
+                height: 160,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      Color(0x0FFFF2E0),
+                      Color(0x00FFF2E0),
+                    ],
                   ),
                 ),
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.fromLTRB(22, 22, 22, 22),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.receipt_long_outlined,
-                          color: AppColors.primary, size: 18),
+                      const Icon(
+                        Icons.receipt_long_outlined,
+                        color: AppColors.primary,
+                        size: 19,
+                      ),
                       const SizedBox(width: 8),
                       Text(
                         'DEBT LEFT',
-                        style: AppTextStyles.caption.copyWith(
-                          color: AppColors.textSecondary,
-                          letterSpacing: 0.5,
+                        style: AppText.label.copyWith(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.8,
+                          color: const Color(0xFF594043),
                         ),
                       ),
                       const Spacer(),
+                      // Status pill indicator
                       Container(
-                        width: 36,
-                        height: 20,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: AppColors.dangerSoft,
-                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          color: const Color(0xFFFFEADF),
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
                         ),
-                        child: const Center(
-                          child: Icon(Icons.circle,
-                              color: AppColors.error, size: 8),
+                        child: Center(
+                          child: Container(
+                            width: 7,
+                            height: 7,
+                            decoration: const BoxDecoration(
+                              color: AppColors.primary,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  RichText(
-                    text: TextSpan(
-                      style: AppTextStyles.priceLarge.copyWith(fontSize: 42),
-                      children: const [
-                        TextSpan(
-                          text: 'Rp ',
-                          style: TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.w500),
+                  const SizedBox(height: 10),
+                  // Amount display
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Text(
+                        'Rp',
+                        style: AppText.currency.copyWith(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF594043),
                         ),
-                        TextSpan(text: '60.000'),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '60.000',
+                        style: AppText.amount.copyWith(
+                          fontSize: 44,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.8,
+                          color: const Color(0xFF261900),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  DemoPrimaryButton(
+                  const SizedBox(height: 18),
+                  // Full-width Pay Now Button with Maroon Gradient & Glow
+                  _CardActionButton(
                     label: 'Pay Now',
-                    icon: Icons.arrow_forward,
+                    icon: Icons.arrow_forward_rounded,
                     onPressed: onTap,
                   ),
                 ],
@@ -388,78 +454,60 @@ class _DebtCard extends StatelessWidget {
   }
 }
 
-class _MenuCard extends StatelessWidget {
-  final String date;
-  final String title;
-  final String subtitle;
+// ---------------------------------------------------------------------------
+// Card Action Button (inside Debt Card)
+// Gradient Maroon + Vibrant glow shadow + Full width
+// ---------------------------------------------------------------------------
+class _CardActionButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onPressed;
 
-  const _MenuCard({
-    required this.date,
-    required this.title,
-    required this.subtitle,
+  const _CardActionButton({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
   });
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 240,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          boxShadow: AppShadows.cardElevated,
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          child: ColoredBox(
-            color: Colors.white,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      width: double.infinity,
+      height: 48,
+      decoration: BoxDecoration(
+        color: AppColors.primary,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x409E003A), // Maroon glow shadow
+            blurRadius: 16,
+            offset: Offset(0, 6),
+            spreadRadius: 0,
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onPressed,
+          child: Center(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Expanded(
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      const DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Color(0xFFFFE0A8), Colors.white],
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        left: 12,
-                        top: 12,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: AppColors.background,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            date,
-                            style: AppTextStyles.caption.copyWith(
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontFamily: 'Plus Jakarta Sans',
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.3,
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title, style: AppTextStyles.bodyMediumBold),
-                      const SizedBox(height: 4),
-                      Text(subtitle, style: AppTextStyles.bodySmall),
-                    ],
-                  ),
-                ),
+                const SizedBox(width: 8),
+                Icon(icon, color: Colors.white, size: 18),
               ],
             ),
           ),
@@ -469,79 +517,170 @@ class _MenuCard extends StatelessWidget {
   }
 }
 
-class _PreferenceCard extends StatelessWidget {
-  final VoidCallback onTap;
+// ---------------------------------------------------------------------------
+// Section Header
+// ---------------------------------------------------------------------------
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final VoidCallback onSeeAll;
 
-  const _PreferenceCard({required this.onTap});
+  const _SectionHeader({required this.title, required this.onSeeAll});
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(28),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(22, 28, 22, 26),
-        decoration: const BoxDecoration(color: AppColors.surfaceVariant),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Positioned(
-              right: -1,
-              top: -1,
-              child: _CornerBlob(size: 80, roundBottomLeft: true),
-            ),
-            Positioned(
-              left: -1,
-              bottom: -1,
-              child: _CornerBlob(size: 64, roundTopRight: true),
-            ),
-            Column(
+    return Row(
+      children: [
+        Text(title, style: AppText.sectionTitle),
+        const Spacer(),
+        GestureDetector(
+          onTap: onSeeAll,
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Transform.rotate(
-                  angle: -0.12,
-                  child: Container(
-                    width: 64,
-                    height: 64,
-                    decoration: BoxDecoration(
-                      color: AppColors.peach,
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: const Icon(Icons.star_border,
-                        color: AppColors.iconGold, size: 35),
-                  ),
-                ),
-                const SizedBox(height: 20),
                 Text(
-                  'Punya request khusus?',
-                  textAlign: TextAlign.center,
-                  style: AppTextStyles.sectionTitle.copyWith(fontSize: 22),
-                ),
-                const SizedBox(height: 8),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 260),
-                  child: Text(
-                    'Beri tahu kami jika ada alergi atau saran makanan untuk pesanan Anda berikutnya.',
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.bodySmall,
+                  'See All',
+                  style: AppText.link.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
                   ),
                 ),
-                const SizedBox(height: 20),
-                OutlinedButton(
-                  onPressed: onTap,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    backgroundColor: Colors.white,
-                    side: const BorderSide(color: AppColors.border),
-                    minimumSize: const Size(0, 44),
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    textStyle: AppTextStyles.bodyMediumBold,
-                  ),
-                  child: const Text('Atur Preferensi'),
+                const SizedBox(width: 3),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  size: 16,
+                  color: AppColors.primaryDark,
                 ),
               ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Menu Carousel
+// ---------------------------------------------------------------------------
+class _MenuCarousel extends StatelessWidget {
+  final PageController controller;
+  final List<HomeMenuItem> menus;
+
+  const _MenuCarousel({required this.controller, required this.menus});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 224,
+      child: PageView.builder(
+        controller: controller,
+        padEnds: false,
+        itemCount: menus.length,
+        itemBuilder: (context, index) {
+          final item = menus[index];
+          return Padding(
+            padding: const EdgeInsets.only(right: 14),
+            child: _MenuCard(item: item),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Menu Card
+// Presisi: Warm peach gradient header fading to white,
+// White day chip dengan subtle shadow, crisp typography & soft card shadow.
+// ---------------------------------------------------------------------------
+class _MenuCard extends StatelessWidget {
+  final HomeMenuItem item;
+
+  const _MenuCard({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0D261900), // Ultra-soft subtle shadow
+            blurRadius: 18,
+            offset: Offset(0, 6),
+            spreadRadius: 0,
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top Preview Area with warm peach gradient
+            Expanded(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  DecoratedBox(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Color(0xFFFFE0A8), // Warm golden peach
+                          Color(0xFFFFE9C7),
+                          Colors.white,
+                        ],
+                        stops: [0.0, 0.55, 1.0],
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 12,
+                    top: 12,
+                    child: _DayChip(label: item.dayLabel),
+                  ),
+                ],
+              ),
+            ),
+            // Bottom Information Area
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'Plus Jakarta Sans',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF261900),
+                      height: 1.25,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    item.subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'Plus Jakarta Sans',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
+                      color: Color(0xFF755B5E),
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -550,12 +689,143 @@ class _PreferenceCard extends StatelessWidget {
   }
 }
 
-class _CornerBlob extends StatelessWidget {
+// ---------------------------------------------------------------------------
+// Day Chip
+// White translucent rounded pill with subtle shadow and maroon text
+// ---------------------------------------------------------------------------
+class _DayChip extends StatelessWidget {
+  final String label;
+
+  const _DayChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xEBFFFFFF), // White ~92%
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontFamily: 'Plus Jakarta Sans',
+          fontSize: 11.5,
+          fontWeight: FontWeight.w600,
+          color: AppColors.primaryDark,
+          letterSpacing: 0.2,
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Request Card
+// Warm secondaryContainer, pinkish blob corners, tilted star tile,
+// and crisp white outlined pill button.
+// ---------------------------------------------------------------------------
+class _RequestCard extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _RequestCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF1DD), // Warm soft cream
+        borderRadius: BorderRadius.circular(26),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x08261900),
+            blurRadius: 16,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(26),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Top right decorative corner blob
+            Positioned(
+              right: -10,
+              top: -10,
+              child: _Blob(size: 88, roundBottomLeft: true),
+            ),
+            // Bottom left decorative corner blob
+            Positioned(
+              left: -8,
+              bottom: -8,
+              child: _Blob(size: 72, roundTopRight: true),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+              child: Column(
+                children: [
+                  Transform.rotate(
+                    angle: -0.108, // ~ -6.2 degrees
+                    child: _StarTile(),
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    'Punya request khusus?',
+                    textAlign: TextAlign.center,
+                    style: AppText.sectionTitle.copyWith(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF261900),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 270),
+                    child: const Text(
+                      'Beri tahu kami jika ada alergi atau saran makanan untuk pesanan Anda berikutnya.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w400,
+                        color: Color(0xFF6B5154),
+                        height: 1.45,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  _OutlinedPill(
+                    label: 'Atur Preferensi',
+                    onPressed: onTap,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Blob decorative shape
+// ---------------------------------------------------------------------------
+class _Blob extends StatelessWidget {
   final double size;
   final bool roundBottomLeft;
   final bool roundTopRight;
 
-  const _CornerBlob({
+  const _Blob({
     required this.size,
     this.roundBottomLeft = false,
     this.roundTopRight = false,
@@ -567,10 +837,150 @@ class _CornerBlob extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: AppColors.blobPink,
+        color: const Color(0xFFF7DED5), // Dusty soft rose peach
         borderRadius: BorderRadius.only(
           bottomLeft: roundBottomLeft ? Radius.circular(size) : Radius.zero,
           topRight: roundTopRight ? Radius.circular(size) : Radius.zero,
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Star Tile (58x58, radius 18, golden glow shadow & amber star icon)
+// ---------------------------------------------------------------------------
+class _StarTile extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 58,
+      height: 58,
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFDEA5), // Golden warm peach container
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x33735C00), // Warm gold shadow
+            blurRadius: 14,
+            offset: Offset(0, 4),
+            spreadRadius: 0,
+          ),
+        ],
+      ),
+      child: const Center(
+        child: Icon(
+          Icons.star_border_rounded,
+          color: Color(0xFF735C00),
+          size: 30,
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Primary Button (Pesan Ketring / Start Buying!)
+// Rich Maroon Gradient + Dynamic Box Shadow + 14px rounded corners
+// ---------------------------------------------------------------------------
+class _PrimaryButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onPressed;
+
+  const _PrimaryButton({
+    required this.label,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: 52,
+      decoration: BoxDecoration(
+        color: AppColors.primary,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x4D9E003A), // 30% Maroon shadow glow
+            blurRadius: 18,
+            offset: Offset(0, 8),
+            spreadRadius: 0,
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onPressed,
+          child: Center(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontFamily: 'Plus Jakarta Sans',
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.4,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Outlined Pill Button (Atur Preferensi)
+// Clean white background, delicate border, subtle elevation
+// ---------------------------------------------------------------------------
+class _OutlinedPill extends StatelessWidget {
+  final String label;
+  final VoidCallback onPressed;
+
+  const _OutlinedPill({required this.label, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 42,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: Border.all(
+          color: const Color(0x269E003A), // 15% Maroon outline
+          width: 1.2,
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          onTap: onPressed,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 26),
+            child: Center(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontFamily: 'Plus Jakarta Sans',
+                  color: AppColors.primaryDark,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );

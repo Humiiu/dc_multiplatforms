@@ -67,31 +67,33 @@ class DemoPrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    final bool enabled = onPressed != null;
+    return Container(
       width: double.infinity,
       height: 52,
-      child: FilledButton(
-        onPressed: onPressed,
-        style: FilledButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: AppColors.border,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.md),
+      decoration: BoxDecoration(
+        color: enabled ? AppColors.primary : AppColors.border,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: enabled ? AppShadows.button : null,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onPressed,
+          child: Center(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(label, style: AppTextStyles.buttonLarge),
+                if (icon != null) ...[
+                  const SizedBox(width: 8),
+                  Icon(icon, color: Colors.white, size: 19),
+                ],
+              ],
+            ),
           ),
-          elevation: 8,
-          shadowColor: AppColors.shadowPrimaryStrong,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(label, style: AppTextStyles.buttonLarge),
-            if (icon != null) ...[
-              const SizedBox(width: 8),
-              Icon(icon, size: 19),
-            ],
-          ],
         ),
       ),
     );

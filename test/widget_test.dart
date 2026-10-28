@@ -12,25 +12,29 @@ void main() {
   });
 
   test('demo order state updates selections and totals locally', () {
-    final state = DemoOrderState();
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    final notifier = container.read(demoOrderProvider.notifier);
 
-    expect(state.total, 40000);
-    state.toggleDay('rabu');
-    expect(state.total, 60000);
-    state.toggleDay('senin');
-    expect(state.total, 40000);
+    DemoOrderState state() => container.read(demoOrderProvider);
 
-    state.addDemoOrder();
-    expect(state.orders.first.amount, 40000);
-    expect(state.orders.first.days, ['Selasa', 'Rabu']);
-    expect(state.orders.first.isPaid, isFalse);
+    expect(state().total, 40000);
+    notifier.toggleDay('rabu');
+    expect(state().total, 60000);
+    notifier.toggleDay('senin');
+    expect(state().total, 40000);
 
-    state.prepareDebtPayment(
+    notifier.addDemoOrder();
+    expect(state().orders.first.amount, 40000);
+    expect(state().orders.first.days, ['Selasa', 'Rabu']);
+    expect(state().orders.first.isPaid, isFalse);
+
+    notifier.prepareDebtPayment(
       450000,
       targetWeek: 'Oktober, Minggu 2',
     );
-    state.addDemoOrder();
-    final settledDebt = state.orders.firstWhere(
+    notifier.addDemoOrder();
+    final settledDebt = state().orders.firstWhere(
       (order) => order.week == 'Oktober, Minggu 2',
     );
     expect(settledDebt.isPaid, isTrue);
@@ -81,8 +85,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(Icons.receipt_long_outlined), findsOneWidget);
-    expect(find.text('Total Seluruh Ketring:'), findsOneWidget);
+    expect(find.text('History'), findsOneWidget);
+    expect(find.text('hhhhhhhhhhhhhhistory'), findsOneWidget);
     expect(find.text('Semua'), findsOneWidget);
     expect(find.text('Sudah Lunas'), findsOneWidget);
     expect(find.text('Belum Lunas'), findsOneWidget);

@@ -81,7 +81,9 @@ class CheckoutPage extends ConsumerWidget {
                     selected: order.paymentMethod == DemoPaymentMethod.qris ||
                         order.paymentMethod == DemoPaymentMethod.payLater,
                     icon: Icons.qr_code_2,
-                    onTap: () => ref.read(demoOrderProvider).selectPayment(
+                    onTap: () => ref
+                        .read(demoOrderProvider.notifier)
+                        .selectPayment(
                           DemoPaymentMethod.qris,
                         ),
                   ),
@@ -93,7 +95,9 @@ class CheckoutPage extends ConsumerWidget {
                         order.paymentMethod == DemoPaymentMethod.virtualAccount,
                     icon: Icons.account_balance_outlined,
                     banks: const ['BCA', 'MDR'],
-                    onTap: () => ref.read(demoOrderProvider).selectPayment(
+                    onTap: () => ref
+                        .read(demoOrderProvider.notifier)
+                        .selectPayment(
                           DemoPaymentMethod.virtualAccount,
                         ),
                   ),
@@ -103,7 +107,9 @@ class CheckoutPage extends ConsumerWidget {
                     selected: order.paymentMethod == DemoPaymentMethod.eWallet,
                     icon: Icons.wallet_outlined,
                     banks: const ['G', 'O', 'S'],
-                    onTap: () => ref.read(demoOrderProvider).selectPayment(
+                    onTap: () => ref
+                        .read(demoOrderProvider.notifier)
+                        .selectPayment(
                           DemoPaymentMethod.eWallet,
                         ),
                   ),
@@ -142,7 +148,9 @@ class CheckoutPage extends ConsumerWidget {
                         ? null
                         : () {
                             final wasDebtPayment = order.payingExistingDebt;
-                            order.addDemoOrder();
+                            ref
+                                .read(demoOrderProvider.notifier)
+                                .addDemoOrder();
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(

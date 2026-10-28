@@ -119,13 +119,27 @@ Rules ini universal: desain, frontend, backend, bugfix, refactor, apa pun.
   keputusan penting, langkah berikutnya.
 - Keputusan arsitektur baru dicatat di `docs/ARCHITECTURE.md`.
 
-## 11. Git
-- Jangan commit atau push kecuali user minta. Kalau diminta commit: pesan singkat dan
-  jelas, satu commit satu perubahan logis (misal satu commit per halaman).
+## 11. Git & Backup Antar Perangkat
+- Setiap selesai satu task / progres fitur / revisi UI dan terverifikasi bersih (analyze + test lulus):
+  - Lakukan git commit secara berkala (checkpoint aman) dengan pesan deskriptif.
+  - Ini memastikan jika terjadi bug fatal, kode dapat di-reverse/revert kapan pun dengan aman (`git revert` / `git checkout`).
+  - Berikan pengingat atau jalankan push (`git push origin master`) agar tersimpan di cloud GitHub sebagai backup untuk sinkronisasi di semua perangkat ngoding.
 
 ## 12. Komunikasi
+- **Wajib Pengingat Emulator**: Di setiap akhir task revisi/bugfix/UI polish, WAJIB sertakan petunjuk command pengujian emulator:
+  1. Launch emulator: flutter emulators --launch Medium_Phone
+  2. Jalankan app: flutter run
+  3. Shortcut: tekan `r` untuk Hot Reload di terminal.
 - Bahasa Indonesia, singkat, langsung ke inti. Jelaskan istilah teknis seperlunya.
 - Akhir task: ringkas apa yang diubah, apa yang perlu dicek user secara manual,
   dan temuan di luar scope.
 - Jujur soal kekurangan dan ketidakpastian. Lebih baik bilang "belum yakin" daripada
   mengarang.
+## 13. Siklus Kerja Disiplin & Instruction Set (WAJIB DIPATUHI SETIAP MODEL)
+- **Ritual Pra-Eksekusi ("Baca Bismillah / Mantapkan Instruksi Dulu")**: Sebelum mulai mengetik kode atau tool apapun, WAJIB baca ulang semua instruksi user, PROJECT_SPEC.md, ARCHITECTURE.md, dan log progres. Mantapkan pemahaman terlebih dahulu.
+- **Planning & "Grill-Me" Protocol**: Saat membuat perencanaan fitur/solusi baru, WAJIB lakukan wawancara interaktif (Grill-Me) dengan user: ajukan pertanyaan kritis mengenai kebutuhan proyek, berikan opsi dan rekomendasi terbaik, lalu tuliskan action plan secara terstruktur.
+- **Zero Assumptions & Scope Guardrail**: Dilarang keras berasumsi sendiri. Jika bingung atau ambigu, tanyakan langsung ke user. Dilarang melakukan hal-hal di luar instruksi user. Jika punya ide bagus/inovatif, tanyakan dan usulkan dahulu, jangan langsung eksekusi tanpa izin.
+- **Eksekusi Bertahap**: Kerjakan satu per satu secara terfokus, jangan borongan.
+- **Double Check Verifikasi**: Selalu periksa kembali kode, jalankan flutter analyze, dan pastikan 0 error sebelum menyatakan tugas selesai.
+- **Diagnosa Bug**: Jelaskan akar masalah (root cause) dahulu -> paparkan solusi -> tanyakan apakah user ingin model yang mengeksekusi atau user ingin mencoba sendiri.
+- **Proteksi PIN Owner**: Data keuangan, omzet, modal, dan laba pada Web Admin wajib dilindungi PIN Owner dengan auto-lock; karyawan tidak boleh melihat data ini.

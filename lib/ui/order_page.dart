@@ -46,14 +46,14 @@ class OrderPage extends ConsumerWidget {
                       day: day,
                       selected: order.selectedDays.contains(day.key),
                       onTap: () =>
-                          ref.read(demoOrderProvider).toggleDay(day.key),
+                          ref.read(demoOrderProvider.notifier).toggleDay(day.key),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 32),
                   _NumberedTitle(number: '2', title: 'Order Summary'),
                   const SizedBox(height: 16),
                   _OrderSummary(order: order),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 32),
                   _NumberedTitle(number: '3', title: 'Payment Method'),
                   const SizedBox(height: 16),
                   _PaymentChoice(
@@ -62,7 +62,9 @@ class OrderPage extends ConsumerWidget {
                     subtitle:
                         'Pay securely online via e-Wallet or Bank Transfer.',
                     icon: Icons.account_balance_wallet_outlined,
-                    onTap: () => ref.read(demoOrderProvider).selectPayment(
+                    onTap: () => ref
+                        .read(demoOrderProvider.notifier)
+                        .selectPayment(
                           DemoPaymentMethod.qris,
                         ),
                   ),
@@ -71,7 +73,9 @@ class OrderPage extends ConsumerWidget {
                     title: 'Pay Later',
                     subtitle: 'Due at the end of this week.',
                     icon: Icons.access_time,
-                    onTap: () => ref.read(demoOrderProvider).selectPayment(
+                    onTap: () => ref
+                        .read(demoOrderProvider.notifier)
+                        .selectPayment(
                           DemoPaymentMethod.payLater,
                         ),
                   ),

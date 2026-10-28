@@ -56,7 +56,7 @@ final adminRoleCacheProvider = Provider<AdminRoleCache>((ref) {
 final currentUserRoleProvider = Provider<UserRole>((ref) {
   final uid = ref.watch(currentUserIdProvider);
   final user = ref.watch(userDataProvider(uid ?? ''));
-  return user.valueOrNull?.role ?? UserRole.user;
+  return user.asData?.value?.role ?? UserRole.user;
 });
 
 /// Apakah user yang login bertindak sebagai admin (reaktif).

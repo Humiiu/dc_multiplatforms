@@ -25,7 +25,6 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
             (_filter == 1 && order.isPaid) ||
             (_filter == 2 && !order.isPaid))
         .toList();
-    final total = allOrders.fold<int>(0, (sum, order) => sum + order.amount);
     return Scaffold(
       body: SafeArea(
         bottom: false,
@@ -34,49 +33,23 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
             const DemoTopBar(),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(28, 18, 28, 24),
+                padding: const EdgeInsets.fromLTRB(28, 8, 28, 24),
                 children: [
-                  Center(
-                    child: Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceVariant,
-                        borderRadius: BorderRadius.circular(AppRadius.md),
-                      ),
-                      child: const Icon(
-                        Icons.receipt_long_outlined,
-                        color: AppColors.primary,
-                        size: 24,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
                   Text(
                     'History',
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.sectionTitle.copyWith(
-                      color: AppColors.textPrimary,
-                      fontSize: 22,
+                    style: AppTextStyles.welcome.copyWith(
+                      color: AppColors.primaryDark,
+                      fontSize: 28,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   Text(
-                    'Total Seluruh Ketring:',
-                    textAlign: TextAlign.center,
+                    'hhhhhhhhhhhhhhistory',
                     style: AppTextStyles.bodySmall.copyWith(
                       color: AppColors.textSecondary,
                     ),
                   ),
-                  Text(
-                    demoRupiah(total),
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
                   _HistoryFilters(
                     selected: _filter,
                     onSelected: (filter) => setState(() => _filter = filter),
@@ -132,34 +105,47 @@ class _HistoryFilters extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const labels = ['Semua', 'Sudah Lunas', 'Belum Lunas'];
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (var i = 0; i < labels.length; i++) ...[
-            if (i > 0) const SizedBox(width: 10),
-            ChoiceChip(
-              label: Text(labels[i]),
-              selected: selected == i,
-              showCheckmark: false,
-              onSelected: (_) => onSelected(i),
-              labelStyle: AppTextStyles.bodyMedium.copyWith(
-                color: selected == i ? Colors.white : AppColors.textSecondary,
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
+    const flexes = [7, 10, 8];
+
+    return Row(
+      children: [
+        for (var i = 0; i < labels.length; i++) ...[
+          if (i > 0) const SizedBox(width: 12),
+          Expanded(
+            flex: flexes[i],
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => onSelected(i),
+                borderRadius: BorderRadius.circular(12),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  height: 38,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: selected == i
+                        ? AppColors.primary
+                        : AppColors.chipBackground,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    labels[i],
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: selected == i
+                          ? Colors.white
+                          : AppColors.inkVariant,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
               ),
-              selectedColor: AppColors.primary,
-              backgroundColor: AppColors.chipBackground,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.round),
-                side: BorderSide.none,
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-              elevation: selected == i ? 0 : 1,
             ),
-          ],
+          ),
         ],
-      ),
+      ],
     );
   }
 }

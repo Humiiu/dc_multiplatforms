@@ -297,7 +297,7 @@ class _DropdownInput<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<T>(
-      value: value,
+      initialValue: value,
       isExpanded: true,
       dropdownColor: AppColors.background,
       menuMaxHeight: 240,

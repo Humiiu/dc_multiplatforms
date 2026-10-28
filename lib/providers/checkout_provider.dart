@@ -15,4 +15,13 @@ class CheckoutState {
   bool get isPayingExistingDebt => existingOrderIds != null && existingOrderIds!.isNotEmpty;
 }
 
-final checkoutProvider = StateProvider<CheckoutState?>((ref) => null);
+class CheckoutNotifier extends Notifier<CheckoutState?> {
+  @override
+  CheckoutState? build() => null;
+
+  void update(CheckoutState? newState) {
+    state = newState;
+  }
+}
+
+final checkoutProvider = NotifierProvider<CheckoutNotifier, CheckoutState?>(CheckoutNotifier.new);

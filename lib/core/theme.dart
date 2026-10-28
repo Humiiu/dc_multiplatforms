@@ -77,6 +77,28 @@ class AppColors {
     colors: [Color(0xFF9E003A), Color(0xFF740028)],
   );
 
+  // --- Betadesign Home tokens (added for Home page pixel-match) ---
+  // Surfaces (betadesign naming)
+  static const ink = Color(0xFF261900); // judul
+  static const inkVariant = Color(0xFF594043); // teks sekunder
+  static const card = Color(0xFFFFFFFF); // kartu debt & menu
+  static const secondaryContainer = Color(0xFFFFF2E0); // kartu request
+  static const tertiaryContainer = Color(0xFFFFDEA5); // area gambar menu, tile bintang
+  static const blob = Color(0xFFF5DAD2); // dekorasi sudut kartu request
+  static const pillBg = Color(0xFFFFEADF); // pill indikator di kartu debt
+  static const chipBg = Color(0xE6FFFFFF); // chip hari = putih 90%
+  static const avatarIcon = Color(0xFFB9B5B2); // ikon profil header
+
+  // Brand
+  static const tertiary = Color(0xFF735C00); // ikon bintang
+
+  // Borders / outlines
+  static const outlineSoft = Color(0x1F9E003A); // border tombol "Atur Preferensi" (primary 12%)
+
+  // Glow dekoratif di kartu debt
+  static const glowWarm = Color(0x47FFDEA5); // kanan atas
+  static const glowCool = Color(0x149E003A); // kiri bawah
+
   AppColors._();
 }
 
@@ -89,6 +111,14 @@ class AppRadius {
   static const xl = 24.0;
   static const xxl = 32.0;
   static const round = 999.0;
+
+  // --- Betadesign Home specific radius ---
+  static const menuCard = 16.0; // kartu menu
+  static const tile = 16.0; // tile bintang
+  static const buttonLg = 12.0; // Start Buying, Atur Preferensi
+  static const buttonSm = 8.0; // Pay Now
+  static const nav = 20.0; // bar navigasi
+  static const pill = 999.0;
 
   AppRadius._();
 }
@@ -152,6 +182,53 @@ class AppShadows {
       blurRadius: 0,
       offset: Offset(0, 0),
       spreadRadius: 1,
+    ),
+  ];
+
+  // --- Betadesign Home specific shadows ---
+  static const cardShadow = [
+    BoxShadow(
+      color: Color(0x0F594043), // inkVariant 6%
+      blurRadius: 16,
+      offset: Offset(0, 4),
+      spreadRadius: 0,
+    ),
+  ];
+
+  static const tile = [
+    BoxShadow(
+      color: Color(0x24735C00), // tertiary 14%
+      blurRadius: 12,
+      offset: Offset(0, 4),
+      spreadRadius: 0,
+    ),
+  ];
+
+  static const button = [
+    BoxShadow(
+      color: Color(0x4D9E003A), // primary 30%
+      blurRadius: 16,
+      offset: Offset(0, 8),
+      spreadRadius: 0,
+    ),
+  ];
+
+  /// Softer button shadow for smaller CTA (e.g. Pay Now inside debt card)
+  static const buttonSoft = [
+    BoxShadow(
+      color: Color(0x339E003A), // primary 20%
+      blurRadius: 12,
+      offset: Offset(0, 4),
+      spreadRadius: 0,
+    ),
+  ];
+
+  static const bar = [
+    BoxShadow(
+      color: Color(0x0D000000),
+      blurRadius: 8,
+      offset: Offset(0, -2),
+      spreadRadius: 0,
     ),
   ];
 
@@ -305,6 +382,78 @@ class AppTextStyles {
       );
 
   AppTextStyles._();
+}
+
+/// Typography tokens for Home page (betadesign) — separate from AppTextStyles
+/// Uses: Playfair Display (judul/angka), Plus Jakarta Sans (UI/isi)
+/// Sizes matched to PNG text width (tolerance ±3%).
+class AppText {
+  AppText._();
+
+  // --- Playfair Display ---
+  static TextStyle get greeting => GoogleFonts.playfairDisplay(
+        fontSize: 28, fontWeight: FontWeight.w700, color: AppColors.ink, height: 1.2);
+
+  static TextStyle get amount => GoogleFonts.playfairDisplay(
+        fontSize: 46, fontWeight: FontWeight.w700, color: AppColors.ink, height: 1.0);
+
+  static TextStyle get sectionTitle => GoogleFonts.playfairDisplay(
+        fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.ink, height: 1.2);
+
+  // --- Plus Jakarta Sans ---
+  static TextStyle get overline => GoogleFonts.plusJakartaSans(
+        fontSize: 14, fontWeight: FontWeight.w500, letterSpacing: 0.5,
+        color: AppColors.inkVariant, height: 1.2);
+
+  static TextStyle get label => GoogleFonts.plusJakartaSans(
+        fontSize: 12, fontWeight: FontWeight.w500, letterSpacing: 0.2,
+        color: AppColors.inkVariant);
+
+  static TextStyle get currency => GoogleFonts.plusJakartaSans(
+        fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.inkVariant);
+
+  static TextStyle get body => GoogleFonts.plusJakartaSans(
+        fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.inkVariant, height: 1.5);
+
+  static TextStyle get menuTitle => GoogleFonts.plusJakartaSans(
+        fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.ink, height: 1.3);
+
+  static TextStyle get menuSub => GoogleFonts.plusJakartaSans(
+        fontSize: 13, fontWeight: FontWeight.w400, color: AppColors.inkVariant, height: 1.35);
+
+  static TextStyle get chip => GoogleFonts.plusJakartaSans(
+        fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.primaryDark, height: 1.3);
+
+  static TextStyle get link => GoogleFonts.plusJakartaSans(
+        fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.primaryDark);
+
+  static TextStyle get buttonSm => GoogleFonts.plusJakartaSans(
+        fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textOnPrimary, letterSpacing: 0.3);
+
+  static TextStyle get buttonLg => GoogleFonts.plusJakartaSans(
+        fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textOnPrimary, letterSpacing: 0.3);
+
+  static TextStyle get buttonOutlined => GoogleFonts.plusJakartaSans(
+        fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.primaryDark, letterSpacing: 0.3);
+
+  static TextStyle get nav => GoogleFonts.plusJakartaSans(
+        fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.inkVariant, height: 1.2);
+
+  static TextStyle get navActive => GoogleFonts.plusJakartaSans(
+        fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primaryDark, height: 1.2);
+}
+
+/// Spacing tokens for Home page (betadesign)
+class AppSpace {
+  AppSpace._();
+
+  static const xs = 4.0;
+  static const sm = 8.0;
+  static const md = 12.0;
+  static const lg = 16.0;
+  static const xl = 20.0; // margin halaman
+  static const xxl = 24.0;
+  static const xxxl = 32.0;
 }
 
 /// Spacing tokens
