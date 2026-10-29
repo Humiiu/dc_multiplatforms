@@ -260,3 +260,18 @@ Perubahan:
 Verifikasi:
 - `dart analyze .` — 0 issues found.
 - `flutter test` — 34 test seluruhnya lulus.
+
+
+## 20. Perbaikan Posisi Vertikal dan Pencegahan Teks Terpotong pada Tab Auth (29 Okt 2026)
+
+Task: Memperbaiki alignment tab pill Login/Register yang sebelumnya condong ke bawah dan menyebabkan ekor huruf bawah (seperti huruf 'g') terpotong (*clipped*).
+
+Perubahan:
+- `lib/ui/auth_page.dart`:
+  * Mengganti `FilledButton` pada `_AuthTab` dengan `Material` + `InkWell` + `AnimatedContainer` berukuran tinggi 40 dp dengan `alignment: Alignment.center`.
+  * Menghapus padding tersembunyi bawaan Material 3 dan elevasi yang sebelumnya menekan teks ke bawah.
+  * Menetapkan `height: 1.2` pada teks Plus Jakarta Sans SemiBold agar ekor huruf 'g' pada kata "Login" dan "Register" utuh dan tidak terpotong.
+
+Verifikasi:
+- `dart analyze lib/ui/auth_page.dart` — 0 issues found.
+- `flutter test` — 34 test seluruhnya lulus.
