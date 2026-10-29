@@ -275,3 +275,17 @@ Perubahan:
 Verifikasi:
 - `dart analyze lib/ui/auth_page.dart` — 0 issues found.
 - `flutter test` — 34 test seluruhnya lulus.
+
+
+## 21. Penyesuaian Header Home: Penghapusan Logo dan Penempatan Judul Rata Tengah (29 Okt 2026)
+
+Task: Menghapus logo lingkaran di samping tulisan brand pada header beranda Home Page dan memusatkan teks brand 'DIAN CATERING' secara rata tengah (*center*), dengan tombol bantuan [?] tetap berada di sisi kanan.
+
+Perubahan:
+- `lib/ui/shared_widgets.dart`:
+  * Menghapus widget kontainer `assets/logo.png` (24 dp) dari `DemoTopBar` mode `showBrand`.
+  * Menyelaraskan teks judul `DIAN CATERING` (`Playfair Display` 14.5 dp w700 letterSpacing 1.4 maroon) menjadi tepat di tengah (*centered*) menggunakan `Expanded` dan penyeimbang `SizedBox(width: 30)` di sisi kiri untuk mengimbangi tombol bantuan `[ ? ]` (30 dp) di sisi kanan.
+
+Verifikasi:
+- `dart analyze lib/ui/shared_widgets.dart` — 0 issues found.
+- `flutter test` — 34 test seluruhnya lulus.

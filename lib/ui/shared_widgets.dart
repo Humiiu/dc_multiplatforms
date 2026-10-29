@@ -25,32 +25,20 @@ class DemoTopBar extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0x339E003A), width: 1),
-                    image: const DecorationImage(
-                      image: AssetImage('assets/logo.png'),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
+            // Spacer to balance the 30dp help button on the right and keep DIAN CATERING centered
+            const SizedBox(width: 30),
+            Expanded(
+              child: Center(
+                child: Text(
                   'DIAN CATERING',
                   style: GoogleFonts.playfairDisplay(
-                    fontSize: 14,
+                    fontSize: 14.5,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: 1.2,
+                    letterSpacing: 1.4,
                     color: AppColors.primaryDark,
                   ),
                 ),
-              ],
+              ),
             ),
             Material(
               color: Colors.transparent,
