@@ -576,8 +576,7 @@ class _CardActionButton extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: const TextStyle(
-                    fontFamily: 'Plus Jakarta Sans',
+                  style: GoogleFonts.plusJakartaSans(
                     color: Colors.white,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -736,11 +735,10 @@ class _MenuCard extends StatelessWidget {
                     item.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
+                    style: GoogleFonts.plusJakartaSans(
                       fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF261900),
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF261900),
                       height: 1.25,
                     ),
                   ),
@@ -749,11 +747,10 @@ class _MenuCard extends StatelessWidget {
                     item.subtitle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
+                    style: GoogleFonts.plusJakartaSans(
                       fontSize: 13,
                       fontWeight: FontWeight.w400,
-                      color: Color(0xFF755B5E),
+                      color: const Color(0xFF755B5E),
                       height: 1.3,
                     ),
                   ),
@@ -793,8 +790,7 @@ class _DayChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: const TextStyle(
-          fontFamily: 'Plus Jakarta Sans',
+        style: GoogleFonts.plusJakartaSans(
           fontSize: 11.5,
           fontWeight: FontWeight.w600,
           color: AppColors.primaryDark,
@@ -869,14 +865,13 @@ class _RequestCard extends StatelessWidget {
                   const SizedBox(height: 8),
                   ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 270),
-                    child: const Text(
+                    child: Text(
                       'Beri tahu kami jika ada alergi atau saran makanan untuk pesanan Anda berikutnya.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w400,
-                        color: Color(0xFF6B5154),
+                        color: const Color(0xFF6B5154),
                         height: 1.45,
                       ),
                     ),

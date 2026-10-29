@@ -231,3 +231,17 @@ Perubahan:
 Verifikasi:
 - `flutter analyze` — 0 error, 0 warning (bersih).
 - `flutter test` — 34 test seluruhnya lulus.
+
+
+## 18. Penyesuaian Bobot Font Item Weekly Menu Menjadi SemiBold (29 Okt 2026)
+
+Task: Mengubah bobot teks judul menu mingguan (`item.title` seperti *Ayam Teriyaki*, *Nasi Goreng Spesial*) dari `FontWeight.w700` (Bold) menjadi `FontWeight.w600` (SemiBold), serta migrasi `TextStyle(fontFamily: 'Plus Jakarta Sans')` mentah ke `GoogleFonts.plusJakartaSans` agar tidak fallback ke system font (Roboto).
+
+Perubahan:
+- `lib/ui/home_page.dart`:
+  * Mengubah judul menu di `_MenuCard` dari `FontWeight.w700` (Bold) &rarr; `FontWeight.w600` (SemiBold) menggunakan `GoogleFonts.plusJakartaSans`.
+  * Memperbarui `_MenuCard` subtitle, `_DayChip`, `_CardActionButton`, dan `_RequestCard` deskripsi agar menggunakan `GoogleFonts.plusJakartaSans` secara konsisten.
+
+Verifikasi:
+- `dart analyze lib/ui/home_page.dart` — 0 issues found.
+- `flutter test` — 34 test seluruhnya lulus.
