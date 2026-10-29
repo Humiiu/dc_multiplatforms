@@ -289,3 +289,17 @@ Perubahan:
 Verifikasi:
 - `dart analyze lib/ui/shared_widgets.dart` — 0 issues found.
 - `flutter test` — 34 test seluruhnya lulus.
+
+
+## 22. Penanganan Overflow pada Modal Bottom Sheet Help dan Admin (29 Okt 2026)
+
+Task: Memperbaiki kendala render overflow (`BOTTOM OVERFLOWED BY 8.7 PIXELS`) pada bottom sheet bantuan (Help Sheet) dan mengamankan Admin Sheet agar konten dapat beradaptasi secara fleksibel di semua resolusi layar HP.
+
+Perubahan:
+- `lib/ui/home_page.dart`:
+  * Menambahkan parameter `isScrollControlled: true` pada `showModalBottomSheet` di `_showHelpSheet` dan `_showAdminSheet` sehingga modal tidak dibatasi secara statis pada 56% tinggi layar.
+  * Membungkus isi konten modal dengan `SingleChildScrollView` sehingga seluruh kartu panduan dan tombol aksi tetap tampil lega, utuh, dan dapat di-*scroll* dengan mulus pada perangkat berlayar lebih kecil.
+
+Verifikasi:
+- `dart analyze lib/ui/home_page.dart` — 0 issues found.
+- `flutter test` — 34 test seluruhnya lulus.
