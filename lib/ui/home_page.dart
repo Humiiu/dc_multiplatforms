@@ -859,10 +859,11 @@ class _RequestCard extends StatelessWidget {
                   Text(
                     'Punya request khusus?',
                     textAlign: TextAlign.center,
-                    style: AppText.sectionTitle.copyWith(
+                    style: GoogleFonts.playfairDisplay(
                       fontSize: 22,
                       fontWeight: FontWeight.w700,
                       color: const Color(0xFF261900),
+                      height: 1.25,
                     ),
                   ),
                   const SizedBox(height: 8),

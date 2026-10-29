@@ -222,6 +222,9 @@ class _HistoryCard extends StatelessWidget {
                 DemoPrimaryButton(
                   label: 'Pay Now',
                   icon: Icons.arrow_forward,
+                  height: 38,
+                  fontSize: 13.5,
+                  borderRadius: 10,
                   onPressed: onPay,
                 ),
               ],

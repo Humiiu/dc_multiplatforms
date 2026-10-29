@@ -132,12 +132,18 @@ class DemoPrimaryButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
   final IconData? icon;
+  final double height;
+  final double? fontSize;
+  final double borderRadius;
 
   const DemoPrimaryButton({
     super.key,
     required this.label,
     required this.onPressed,
     this.icon,
+    this.height = 52,
+    this.fontSize,
+    this.borderRadius = 14,
   });
 
   @override
@@ -145,26 +151,37 @@ class DemoPrimaryButton extends StatelessWidget {
     final bool enabled = onPressed != null;
     return Container(
       width: double.infinity,
-      height: 52,
+      height: height,
       decoration: BoxDecoration(
         color: enabled ? AppColors.primary : AppColors.border,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: enabled ? AppShadows.button : null,
+        borderRadius: BorderRadius.circular(borderRadius),
+        boxShadow: enabled
+            ? (height < 45 ? AppShadows.buttonSoft : AppShadows.button)
+            : null,
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(borderRadius),
           onTap: onPressed,
           child: Center(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(label, style: AppTextStyles.buttonLarge),
+                Text(
+                  label,
+                  style: fontSize != null
+                      ? AppTextStyles.buttonLarge.copyWith(fontSize: fontSize)
+                      : AppTextStyles.buttonLarge,
+                ),
                 if (icon != null) ...[
-                  const SizedBox(width: 8),
-                  Icon(icon, color: Colors.white, size: 19),
+                  SizedBox(width: height < 45 ? 6 : 8),
+                  Icon(
+                    icon,
+                    color: Colors.white,
+                    size: fontSize != null ? (fontSize! * 1.15) : 19,
+                  ),
                 ],
               ],
             ),

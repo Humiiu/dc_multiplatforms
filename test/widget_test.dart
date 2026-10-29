@@ -91,9 +91,12 @@ void main() {
     expect(find.text('Sudah Lunas'), findsOneWidget);
     expect(find.text('Belum Lunas'), findsOneWidget);
     expect(find.text('Pay Now'), findsOneWidget);
-    expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
+    expect(find.byIcon(Icons.check_circle_outline), findsWidgets);
     expect(
-      tester.widget<Icon>(find.byIcon(Icons.check_circle_outline)).size,
+      tester
+          .widgetList<Icon>(find.byIcon(Icons.check_circle_outline))
+          .first
+          .size,
       12,
     );
     await tester.scrollUntilVisible(

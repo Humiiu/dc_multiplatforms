@@ -212,3 +212,22 @@ Perubahan:
 Verifikasi:
 - `flutter analyze` — 0 error, 0 warning (bersih).
 - `flutter test` — 34 test seluruhnya lulus.
+
+
+## 17. Pengembalian Font 'Punya request khusus?' dan Penyesuaian Ukuran Tombol History (29 Okt 2026)
+
+Task: Mengembalikan font judul 'Punya request khusus?' ke desain orisinal (Playfair Display bold serif) dan mengecilkan ukuran tombol 'Pay Now' di kartu riwayat History agar proporsional dan tidak mendominasi kartu.
+
+Perubahan:
+- `lib/ui/home_page.dart`:
+  * Mengembalikan font judul 'Punya request khusus?' pada `_RequestCard` secara eksplisit menggunakan `GoogleFonts.playfairDisplay` (ukuran 22 dp, w700 bold, warna `0xFF261900`), terlepas dari `AppText.sectionTitle`.
+- `lib/ui/shared_widgets.dart`:
+  * Menjadikan `DemoPrimaryButton` fleksibel dengan parameter opsional `height` (default 52 dp), `fontSize` (default 16 dp), `borderRadius` (default 14 dp), serta bayangan tombol yang menyesuaikan ukuran (`AppShadows.buttonSoft` untuk tombol kecil < 45 dp).
+- `lib/ui/history_page.dart`:
+  * Menyesuaikan tombol 'Pay Now' di dalam kartu `_HistoryCard` menjadi lebih ramping dan proporsional (`height: 38`, `fontSize: 13.5`, `borderRadius: 10`), selaras dengan baris rincian kartu katering (~36 dp).
+- `test/widget_test.dart`:
+  * Menyesuaikan matcher `Icons.check_circle_outline` menjadi `findsWidgets` karena berkurangnya tinggi kartu membuat kartu lunas kedua ikut tampak dalam viewport uji.
+
+Verifikasi:
+- `flutter analyze` — 0 error, 0 warning (bersih).
+- `flutter test` — 34 test seluruhnya lulus.
