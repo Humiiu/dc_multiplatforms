@@ -245,3 +245,18 @@ Perubahan:
 Verifikasi:
 - `dart analyze lib/ui/home_page.dart` — 0 issues found.
 - `flutter test` — 34 test seluruhnya lulus.
+
+
+## 19. Perbaikan Simetri Logo dan Normalisasi Bayangan Halaman Login/Register (29 Okt 2026)
+
+Task: Memperbaiki artefak bayangan mencuat di kiri atas logo dan memusatkan gambar logo yang sebelumnya tidak simetris (off-center).
+
+Perubahan:
+- `assets/logo.png`:
+  * Memotong (*crop*) margin kosong transparan 34 piksel di sisi kiri sehingga logo lingkaran maroon berada tepat di tengah (*centered*) dalam kanvas bujur sangkar simetris 408 × 408 piksel.
+- `lib/widgets/logo_widget.dart`:
+  * Mengubah konfigurasi `BoxShadow` pada `AppLogo` dan `AppLogoFallback` dari `Offset(-4, 4)` dengan `blurRadius: 4` (yang melempar sabit abu-abu ke kiri atas) menjadi `Offset(0, 6)` dengan `blurRadius: 16` dan `Color(0x26000000)` (bayangan alami dan lembut yang jatuh ke bawah).
+
+Verifikasi:
+- `dart analyze .` — 0 issues found.
+- `flutter test` — 34 test seluruhnya lulus.

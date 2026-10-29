@@ -19,9 +19,9 @@ class AppLogo extends StatelessWidget {
     this.borderColor = AppColors.borderStrong,
     this.shadows = const [
       BoxShadow(
-        color: Color(0x3F000000), // black 25% — matches Figma
-        blurRadius: 4,
-        offset: Offset(-4, 4),
+        color: Color(0x26000000), // Soft black 15%
+        blurRadius: 16,
+        offset: Offset(0, 6),
         spreadRadius: 0,
       ),
     ],
@@ -83,9 +83,9 @@ class AppLogoFallback extends StatelessWidget {
         ),
         shadows: const [
           BoxShadow(
-            color: Color(0x3F000000),
-            blurRadius: 4,
-            offset: Offset(-4, 4),
+            color: Color(0x26000000),
+            blurRadius: 16,
+            offset: Offset(0, 6),
             spreadRadius: 0,
           ),
         ],
