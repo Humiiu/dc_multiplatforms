@@ -88,7 +88,7 @@ class _AuthPageState extends State<AuthPage> {
                   const SizedBox(height: 34),
                   if (_registering) ...[
                     _AuthInput(
-                      hint: 'Nama lengkap',
+                      hint: 'Fullname',
                       icon: null,
                       controller: _nameController,
                     ),
@@ -103,7 +103,7 @@ class _AuthPageState extends State<AuthPage> {
                       children: [
                         Expanded(
                           child: _DropdownInput<String>(
-                            hint: 'Kelas',
+                            hint: 'Class',
                             value: _selectedKelas,
                             items: kelasOptions,
                             onChanged: (value) =>
@@ -113,7 +113,7 @@ class _AuthPageState extends State<AuthPage> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: _DropdownInput<String>(
-                            hint: 'Jurusan',
+                            hint: 'Major',
                             value: _selectedJurusan,
                             items: jurusanOptions,
                             onChanged: (value) =>
@@ -124,7 +124,7 @@ class _AuthPageState extends State<AuthPage> {
                     ),
                     const SizedBox(height: 10),
                     _AuthInput(
-                      hint: 'Nomor telepon',
+                      hint: 'No Telp',
                       icon: null,
                       controller: _phoneController,
                       keyboardType: TextInputType.phone,

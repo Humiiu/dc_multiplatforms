@@ -10,11 +10,11 @@
   5. Tab container (height ~48) with two tabs **Login** and **Register** (selected tab has background `AppColors.secondary`, border radius 14).
   6. Spacing 34.
   7. If Register tab active, series of input fields:
-     - Nama lengkap
+     - Fullname
      - Username
-     - Kelas (dropdown)
-     - Jurusan (dropdown)
-     - Nomor telepon
+     - Class (dropdown)
+     - Major (dropdown)
+     - No Telp
      - Password (obscure toggle)
   8. Spacing 10 between each input.
   9. Primary button (`DemoPrimaryButton`) label **Daftar** (register) or **Sign In** (login).
@@ -59,6 +59,6 @@
 ## Exact Text
 - Header: **WELCOME**
 - Button labels: **Sign In** (login), **Daftar** (register).
-- Input hints exactly as in code: “Nama lengkap”, “Username”, “Kelas”, “Jurusan”, “Nomor telepon”, “Password”.
+- Input hints exactly as in code: “Fullname”, “Username”, “Class”, “Major”, “No Telp”, “Password”.
 
 ---

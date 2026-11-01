@@ -303,3 +303,21 @@ Perubahan:
 Verifikasi:
 - `dart analyze lib/ui/home_page.dart` — 0 issues found.
 - `flutter test` — 34 test seluruhnya lulus.
+
+
+## 23. Penyesuaian Penamaan Hint Field Form Register (02 Nov 2026)
+
+Task: Mengubah label teks petunjuk (hint) pada input form Register agar konsisten menggunakan format penamaan baru sesuai arahan: Fullname, Username, Class, Major, No Telp, Password.
+
+Perubahan:
+- `lib/ui/auth_page.dart`:
+  * Mengubah hint 'Nama lengkap' menjadi 'Fullname'.
+  * Mengubah hint dropdown 'Kelas' menjadi 'Class'.
+  * Mengubah hint dropdown 'Jurusan' menjadi 'Major'.
+  * Mengubah hint 'Nomor telepon' menjadi 'No Telp'.
+- `docs/design-specs/login.md`:
+  * Diperbarui mencatat spesifikasi hint baru pada form Register.
+
+Verifikasi:
+- `flutter analyze` — 0 error, 0 warning (bersih).
+- `flutter test` — 34 test seluruhnya lulus.
