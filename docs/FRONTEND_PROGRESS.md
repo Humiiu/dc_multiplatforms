@@ -361,3 +361,23 @@ Perubahan:
 Verifikasi:
 - `flutter analyze` — 0 error, 0 warning (bersih).
 - `flutter test` — 34 test seluruhnya lulus.
+
+
+## 26. Penyelarasan Spacer Header Kosong pada Halaman Order dan History (02 Nov 2026)
+
+Task: Menerapkan header spacer kosong transparan setinggi 48 dp pada halaman Order dan History tanpa ikon avatar profile, agar posisi teks judul ('Your Order', 'History') tetap sejajar vertikal dan konsisten dengan header 'WELCOME' di Home sesuai mockup referensi pengguna.
+
+Perubahan:
+- `lib/ui/shared_widgets.dart`:
+  * Mengubah `DemoTopBar`: jika `!showBrand && !showBack`, merender `const SizedBox(height: 48)` (header kosong transparan tanpa ikon profil).
+  * Menghapus import tak terpakai `go_router`.
+- `lib/ui/order_page.dart`:
+  * Menempatkan `const DemoTopBar()` dan `const SizedBox(height: 8)` di awal `ListView` dengan `padding: EdgeInsets.fromLTRB(48, 8, 48, 24)`.
+- `lib/ui/history_page.dart`:
+  * Menempatkan `const DemoTopBar()` dan `const SizedBox(height: 8)` di awal `ListView` dengan `padding: EdgeInsets.fromLTRB(28, 8, 28, 24)`.
+- `docs/design-specs/order.md` & `docs/design-specs/history.md`:
+  * Diperbarui mencatat header spacer kosong 48 dp.
+
+Verifikasi:
+- `flutter analyze` — 0 error, 0 warning (bersih).
+- `flutter test` — 34 test seluruhnya lulus.

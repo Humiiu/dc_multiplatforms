@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/theme.dart';
 
@@ -73,46 +72,34 @@ class DemoTopBar extends StatelessWidget {
       );
     }
 
-    return SizedBox(
-      height: 64,
-      child: Row(
-        children: [
-          if (showBack)
+    if (showBack) {
+      return SizedBox(
+        height: 48,
+        child: Row(
+          children: [
             IconButton(
               tooltip: 'Kembali',
               onPressed: () => Navigator.maybePop(context),
               icon: const Icon(Icons.arrow_back),
-            )
-          else
-            const SizedBox(width: 16),
-          if (title != null)
-            Expanded(
-              child: Text(
-                title!,
-                textAlign: showBack ? TextAlign.center : TextAlign.left,
-                style: AppTextStyles.welcome.copyWith(
-                  color: AppColors.primary,
-                  fontSize: 24,
+            ),
+            if (title != null)
+              Expanded(
+                child: Text(
+                  title!,
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.welcome.copyWith(
+                    color: AppColors.primary,
+                    fontSize: 24,
+                  ),
                 ),
               ),
-            )
-          else
-            const Spacer(),
-          if (!showBack)
-            IconButton(
-              tooltip: 'Profil',
-              onPressed: () => context.go('/profile'),
-              icon: const Icon(
-                Icons.account_circle_outlined,
-                color: Color(0xFFBDB6B4),
-                size: 28,
-              ),
-            )
-          else
             const SizedBox(width: 48),
-        ],
-      ),
-    );
+          ],
+        ),
+      );
+    }
+
+    return const SizedBox(height: 48);
   }
 }
 

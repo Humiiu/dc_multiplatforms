@@ -29,10 +29,12 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
       body: SafeArea(
         bottom: false,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(28, 20, 28, 24),
-                children: [
-                  Text(
-                    'History',
+          padding: const EdgeInsets.fromLTRB(28, 8, 28, 24),
+          children: [
+            const DemoTopBar(),
+            const SizedBox(height: 8),
+            Text(
+              'History',
                     style: AppTextStyles.welcome.copyWith(
                       color: AppColors.primaryDark,
                       fontSize: 28,

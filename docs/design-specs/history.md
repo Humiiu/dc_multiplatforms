@@ -1,7 +1,7 @@
 # History Design Spec
 
 ## Layout
-- Scaffold → SafeArea(bottom: false) → ListView (padding fromLTRB 28, 20, 28, 24). Top bar / header profile ditiadakan.
+- Scaffold → SafeArea(bottom: false) → ListView (padding fromLTRB 28,8,28,24). Menggunakan `DemoTopBar` kosong setinggi 48 dp agar posisi judul sejajar konsisten dengan Home.
 - Inside ListView (vertical):
   - Title **History** (left-aligned, style `AppTextStyles.welcome`, fontSize 28, color `AppColors.primaryDark`).
   - SizedBox(height: 4).

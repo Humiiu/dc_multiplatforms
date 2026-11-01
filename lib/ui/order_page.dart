@@ -15,10 +15,12 @@ class OrderPage extends ConsumerWidget {
       body: SafeArea(
         bottom: false,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(48, 24, 48, 24),
-                children: [
-                  Text(
-                    'Your Order',
+          padding: const EdgeInsets.fromLTRB(48, 8, 48, 24),
+          children: [
+            const DemoTopBar(),
+            const SizedBox(height: 8),
+            Text(
+              'Your Order',
                     style: AppTextStyles.welcome.copyWith(
                       color: AppColors.primary,
                       fontSize: 28,
