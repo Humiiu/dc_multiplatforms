@@ -104,6 +104,6 @@ void main() {
       300,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.byIcon(Icons.error_outline), findsOneWidget);
+    expect(find.byIcon(Icons.access_time), findsOneWidget);
   });
 }

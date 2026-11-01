@@ -25,8 +25,8 @@ class CheckoutPage extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(vertical: 28),
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
                         colors: [
                           AppColors.surfaceVariant,
                           AppColors.background,

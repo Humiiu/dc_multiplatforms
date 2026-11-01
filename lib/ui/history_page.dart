@@ -190,7 +190,7 @@ class _HistoryCard extends StatelessWidget {
                     child: Icon(
                       order.isPaid
                           ? Icons.check_circle_outline
-                          : Icons.error_outline,
+                          : Icons.access_time,
                       color: order.isPaid ? AppColors.success : AppColors.error,
                       size: 12,
                     ),

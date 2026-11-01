@@ -321,3 +321,24 @@ Perubahan:
 Verifikasi:
 - `flutter analyze` — 0 error, 0 warning (bersih).
 - `flutter test` — 34 test seluruhnya lulus.
+
+
+## 24. Penyelarasan Visual: Shadow Tab, Gradasi Checkout, Border Order, & Ikon Status History (02 Nov 2026)
+
+Task: Menyelaraskan 4 elemen visual dengan referensi desain PNG di `docs/`: menambahkan bayangan halus pada tab aktif Login/Register, meluruskan arah gradasi header Checkout secara vertikal, mempertegas border kartu terpilih di Order, dan mengganti ikon status belum lunas di History menjadi ikon jam. Bayangan kartu riwayat History dipertahankan sesuai instruksi.
+
+Perubahan:
+- `lib/ui/auth_page.dart`:
+  * Menambahkan `boxShadow` maroon halus (`Color(0x339E003A)`, `blurRadius: 8`, `offset: Offset(0, 3)`) pada tab `_AuthTab` saat terseleksi (*selected*).
+- `lib/ui/checkout_page.dart`:
+  * Mengubah arah `LinearGradient` pada banner total pembayaran atas dari `Alignment.topLeft -> bottomRight` menjadi vertikal murni `Alignment.topCenter -> Alignment.bottomCenter`.
+- `lib/ui/order_page.dart`:
+  * Mempertegas `Border.all` pada kartu hari `_DayCard` dan kartu metode pembayaran `_PaymentChoice` saat terpilih (*selected*) menggunakan `AppColors.primary` (maroon pekat) dengan ketebalan 1.5 dp.
+- `lib/ui/history_page.dart`:
+  * Mengganti ikon status riwayat belum lunas dari `Icons.error_outline` menjadi `Icons.access_time` (ikon jam/waktu) sesuai desain `docs/history.png`.
+- `test/widget_test.dart`:
+  * Menyesuaikan matcher pencarian ikon status riwayat belum lunas menjadi `Icons.access_time`.
+
+Verifikasi:
+- `flutter analyze` — 0 error, 0 warning (bersih).
+- `flutter test` — 34 test seluruhnya lulus.

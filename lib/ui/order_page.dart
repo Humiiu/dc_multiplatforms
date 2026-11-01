@@ -145,7 +145,8 @@ class _DayCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? AppColors.selectedPinkAlt : AppColors.peach,
           border: Border.all(
-            color: selected ? AppColors.borderSelected : Colors.transparent,
+            color: selected ? AppColors.primary : Colors.transparent,
+            width: selected ? 1.5 : 1.0,
           ),
           borderRadius: BorderRadius.circular(AppRadius.md),
         ),
@@ -303,7 +304,8 @@ class _PaymentChoice extends StatelessWidget {
           color: selected ? AppColors.selectedPink : AppColors.peach,
           borderRadius: BorderRadius.circular(AppRadius.md),
           border: Border.all(
-            color: selected ? AppColors.borderSelected : Colors.transparent,
+            color: selected ? AppColors.primary : Colors.transparent,
+            width: selected ? 1.5 : 1.0,
           ),
         ),
         child: Row(

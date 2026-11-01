@@ -224,6 +224,15 @@ class _AuthTab extends StatelessWidget {
             decoration: BoxDecoration(
               color: selected ? AppColors.primary : Colors.transparent,
               borderRadius: BorderRadius.circular(10),
+              boxShadow: selected
+                  ? const [
+                      BoxShadow(
+                        color: Color(0x339E003A),
+                        blurRadius: 8,
+                        offset: Offset(0, 3),
+                      ),
+                    ]
+                  : null,
             ),
             child: Text(
               title,
