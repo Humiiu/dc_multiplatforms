@@ -408,3 +408,23 @@ Perubahan:
 Verifikasi:
 - `flutter analyze` — 0 error, 0 warning (bersih).
 - `flutter test` — 34 test seluruhnya lulus.
+
+
+## 28. Polish Detail History: Tipografi SemiBold, Spasi Kompak Kartu Transaksi, dan Tombol Pay Now (02 Nov 2026)
+
+Task: Menyelaraskan teks tanggal/waktu kartu transaksi dan teks filter tabs ke font weight SemiBold (w600) via GoogleFonts; merapatkan jarak vertikal antar kartu rincian transaksi (6 dp) dan jarak ke tombol (8 dp) sesuai screenshot Figma; serta mengembalikan label tombol pelunasan menjadi 'Pay Now' agar selaras dan konsisten dengan halaman lain.
+
+Perubahan:
+- `lib/ui/history_page.dart`:
+  * Menggunakan `GoogleFonts.plusJakartaSans` eksplisit dengan `FontWeight.w600` (SemiBold) pada tab filter `_HistoryFilters` dan teks tanggal/waktu `order.date`.
+  * Merapatkan jarak antar baris rincian `_HistoryDetailRow` menjadi 6 dp dan jarak ke tombol menjadi 8 dp.
+  * Mengubah corner radius kontainer rincian `_HistoryDetailRow` menjadi 10 dp.
+  * Mengubah label tombol pelunasan di `_HistoryCard` menjadi `'Pay Now'` dengan `borderRadius: 8` dan ikon `Icons.arrow_forward_rounded`.
+- `test/widget_test.dart`:
+  * Mengembalikan ekspektasi pencarian tombol pelunasan menjadi 'Pay Now'.
+- `docs/design-specs/history.md`:
+  * Diperbarui mencatat label tombol 'Pay Now' (radius 8), tanggal SemiBold, dan spasi kompak antar kartu rincian.
+
+Verifikasi:
+- `flutter analyze` — 0 error, 0 warning (bersih).
+- `flutter test` — 34 test seluruhnya lulus.

@@ -28,7 +28,7 @@
 - Title **History**: `AppTextStyles.welcome` (Playfair Display, fontSize 28, color `AppColors.primaryDark`).
 - Subtitle **hhhhhhhhhhhhhhistory**: `AppTextStyles.bodySmall` (color `AppColors.textSecondary`).
 - Filter tabs: Plus Jakarta Sans, fontSize 13, FontWeight.w600.
-- Order date: `AppTextStyles.caption`.
+- Order date: Plus Jakarta Sans 12 dp w600 (SemiBold).
 - Week title: `AppTextStyles.sectionTitle` (fontSize 20).
 - Day rows: `AppTextStyles.bodySmall`.
 - Payment row: `AppTextStyles.bodyMediumBold` for amount, `AppTextStyles.bodySmall` for label.
@@ -57,5 +57,5 @@
 - Header: **History**
 - Sub‑header: **hhhhhhhhhhhhhhistory**
 - Filter tabs: **Semua**, **Sudah Lunas**, **Belum Lunas**
-- Button: **Bayar Sekarang**
+- Button: **Pay Now** (borderRadius: 8)
 - Placeholder when empty: **Tidak ada pesanan pada filter ini.**

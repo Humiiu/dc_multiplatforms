@@ -1,3 +1,4 @@
+import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -124,12 +125,13 @@ class _HistoryFilters extends StatelessWidget {
                     labels[i],
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.bodyMedium.copyWith(
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
                       color: selected == i
                           ? Colors.white
                           : AppColors.inkVariant,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
+                      height: 1.2,
                     ),
                   ),
                 ),
@@ -167,7 +169,14 @@ class _HistoryCard extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: Text(order.date, style: AppTextStyles.caption),
+                    child: Text(
+                        order.date,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
                   ),
                   Container(
                     width: 18,
@@ -194,13 +203,13 @@ class _HistoryCard extends StatelessWidget {
                 order.week,
                 style: AppTextStyles.sectionTitle.copyWith(fontSize: 20),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               for (final day in order.days) ...[
                 _HistoryDetailRow(
                   icon: Icons.restaurant,
                   text: day,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
               ],
               _HistoryDetailRow(
                 icon: Icons.payments_outlined,
@@ -210,10 +219,10 @@ class _HistoryCard extends StatelessWidget {
                     order.isPaid ? AppColors.textPrimary : AppColors.error,
               ),
               if (!order.isPaid) ...[
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 DemoPrimaryButton(
-                  label: 'Bayar Sekarang',
-                  icon: Icons.arrow_forward,
+                  label: 'Pay Now',
+                  icon: Icons.arrow_forward_rounded,
                   height: 38,
                   fontSize: 13.5,
                   borderRadius: 8,
@@ -248,7 +257,7 @@ class _HistoryDetailRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: AppColors.peach,
-        borderRadius: BorderRadius.circular(AppRadius.sm),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
         children: [
