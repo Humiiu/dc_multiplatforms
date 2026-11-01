@@ -14,12 +14,8 @@ class OrderPage extends ConsumerWidget {
     return Scaffold(
       body: SafeArea(
         bottom: false,
-        child: Column(
-          children: [
-            const DemoTopBar(),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(48, 20, 48, 24),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(48, 24, 48, 24),
                 children: [
                   Text(
                     'Your Order',
@@ -88,9 +84,6 @@ class OrderPage extends ConsumerWidget {
                   ),
                 ],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }

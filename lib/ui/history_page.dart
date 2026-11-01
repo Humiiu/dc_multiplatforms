@@ -28,12 +28,8 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
     return Scaffold(
       body: SafeArea(
         bottom: false,
-        child: Column(
-          children: [
-            const DemoTopBar(),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(28, 8, 28, 24),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(28, 20, 28, 24),
                 children: [
                   Text(
                     'History',
@@ -88,9 +84,6 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                   ),
                 ],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }

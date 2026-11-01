@@ -342,3 +342,22 @@ Perubahan:
 Verifikasi:
 - `flutter analyze` — 0 error, 0 warning (bersih).
 - `flutter test` — 34 test seluruhnya lulus.
+
+
+## 25. Penghapusan Header Profile pada Halaman Order dan History (02 Nov 2026)
+
+Task: Menghapus header bar profil (ikon avatar kanan atas `DemoTopBar`) pada halaman Order dan History agar tampilan kedua halaman tersebut menjadi lebih bersih, lega, dan judul langsung menyambut pengguna.
+
+Perubahan:
+- `lib/ui/order_page.dart`:
+  * Menghapus widget `const DemoTopBar()` dan pembungkus `Column` + `Expanded`.
+  * Menjadikan `ListView` langsung sebagai child dari `SafeArea` dengan padding atas yang rapi (`24 dp`).
+- `lib/ui/history_page.dart`:
+  * Menghapus widget `const DemoTopBar()` dan pembungkus `Column` + `Expanded`.
+  * Menjadikan `ListView` langsung sebagai child dari `SafeArea` dengan padding atas proporsional (`20 dp`).
+- `docs/design-specs/order.md` & `docs/design-specs/history.md`:
+  * Diperbarui mencatat peniadaan top bar / header profile.
+
+Verifikasi:
+- `flutter analyze` — 0 error, 0 warning (bersih).
+- `flutter test` — 34 test seluruhnya lulus.

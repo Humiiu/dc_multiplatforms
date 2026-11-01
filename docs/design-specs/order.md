@@ -1,10 +1,7 @@
 # Order Design Spec
 
 ## Layout
-- Scaffold → SafeArea(bottom: false) → Column.
-- Children:
-  1. `DemoTopBar` (height 64).
-  2. Expanded → ListView (padding fromLTRB 48,20,48,24).
+- Scaffold → SafeArea(bottom: false) → ListView (padding fromLTRB 48,24,48,24). Top bar / header profile ditiadakan.
 - Inside ListView (vertical):
   - Title **Your Order** (style `AppTextStyles.welcome`, color `AppColors.primary`, fontSize 28).
   - SizedBox(height: 8).
