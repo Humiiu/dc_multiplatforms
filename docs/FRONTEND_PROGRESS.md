@@ -381,3 +381,30 @@ Perubahan:
 Verifikasi:
 - `flutter analyze` — 0 error, 0 warning (bersih).
 - `flutter test` — 34 test seluruhnya lulus.
+
+
+## 27. Penyeragaman Padding Horizontal 20 dp, Token Header 0xFF9E003A, dan Polish History (02 Nov 2026)
+
+Task: Menyeragamkan horizontal padding (margin samping) menjadi 20 dp konsisten di Home, Order, dan History; memusatkan token warna header `AppTextStyles.welcome` ke `0xFF9E003A` di `theme.dart`; menerapkan font weight SemiBold (w600) pada label navigation bar; mengubah filter tabs History menjadi kapsul oval penuh; serta menyelaraskan corner radius tombol pelunasan di History menjadi 8 dp sesuai spesifikasi Figma.
+
+Perubahan:
+- `lib/core/theme.dart`:
+  * Mengubah warna default `AppTextStyles.welcome` dari `AppColors.primaryDark` (`#7C1036`) menjadi `AppColors.primary` (`#9E003A`).
+  * Mengubah font weight `navLabel` dan `navLabelSelected` dari `FontWeight.w500` menjadi `FontWeight.w600` (SemiBold).
+- `lib/ui/main_shell.dart`:
+  * Menyelaraskan teks label nav item menggunakan `FontWeight.w600` (SemiBold).
+- `lib/ui/order_page.dart`:
+  * Menyeragamkan horizontal padding `ListView` dari `48 dp` menjadi `20 dp`.
+  * Memanggil `AppTextStyles.welcome` langsung tanpa override warna manual.
+- `lib/ui/history_page.dart`:
+  * Menyeragamkan horizontal padding `ListView` dari `28 dp` menjadi `20 dp`.
+  * Memanggil `AppTextStyles.welcome` langsung tanpa override warna manual.
+  * Mengubah `borderRadius` filter tab dari `12` menjadi `20` (kapsul rounded penuh sesuai PNG).
+  * Menyesuaikan `_HistoryCard`: `borderRadius: 16`, `padding: 14`, `margin: bottom 14`.
+  * Menyesuaikan tombol `DemoPrimaryButton`: label `'Bayar Sekarang'` dengan `borderRadius: 8` persis sesuai Figma.
+- `test/widget_test.dart`:
+  * Menyesuaikan pencarian teks tombol pelunasan dari 'Pay Now' menjadi 'Bayar Sekarang'.
+
+Verifikasi:
+- `flutter analyze` — 0 error, 0 warning (bersih).
+- `flutter test` — 34 test seluruhnya lulus.

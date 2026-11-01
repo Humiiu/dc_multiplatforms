@@ -29,17 +29,14 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
       body: SafeArea(
         bottom: false,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(28, 8, 28, 24),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
           children: [
             const DemoTopBar(),
             const SizedBox(height: 8),
             Text(
               'History',
-                    style: AppTextStyles.welcome.copyWith(
-                      color: AppColors.primaryDark,
-                      fontSize: 28,
-                    ),
-                  ),
+              style: AppTextStyles.welcome,
+            ),
                   const SizedBox(height: 4),
                   Text(
                     'hhhhhhhhhhhhhhistory',
@@ -112,7 +109,7 @@ class _HistoryFilters extends StatelessWidget {
               color: Colors.transparent,
               child: InkWell(
                 onTap: () => onSelected(i),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(20),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
                   height: 38,
@@ -121,7 +118,7 @@ class _HistoryFilters extends StatelessWidget {
                     color: selected == i
                         ? AppColors.primary
                         : AppColors.chipBackground,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     labels[i],
@@ -154,16 +151,16 @@ class _HistoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: AppShadows.card,
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -215,11 +212,11 @@ class _HistoryCard extends StatelessWidget {
               if (!order.isPaid) ...[
                 const SizedBox(height: 10),
                 DemoPrimaryButton(
-                  label: 'Pay Now',
+                  label: 'Bayar Sekarang',
                   icon: Icons.arrow_forward,
                   height: 38,
                   fontSize: 13.5,
-                  borderRadius: 10,
+                  borderRadius: 8,
                   onPressed: onPay,
                 ),
               ],

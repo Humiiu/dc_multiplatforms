@@ -1,7 +1,7 @@
 # History Design Spec
 
 ## Layout
-- Scaffold → SafeArea(bottom: false) → ListView (padding fromLTRB 28,8,28,24). Menggunakan `DemoTopBar` kosong setinggi 48 dp agar posisi judul sejajar konsisten dengan Home.
+- Scaffold → SafeArea(bottom: false) → ListView (padding fromLTRB 20,8,20,24). Menggunakan `DemoTopBar` kosong setinggi 48 dp agar posisi judul sejajar konsisten dengan Home.
 - Inside ListView (vertical):
   - Title **History** (left-aligned, style `AppTextStyles.welcome`, fontSize 28, color `AppColors.primaryDark`).
   - SizedBox(height: 4).

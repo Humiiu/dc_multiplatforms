@@ -124,7 +124,7 @@ class _NavItem extends StatelessWidget {
               label,
               style: AppTextStyles.navLabel.copyWith(
                 color: color,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],

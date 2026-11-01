@@ -243,7 +243,7 @@ class AppShadows {
 class AppTextStyles {
   // Header "WELCOME" / "SELAMAT DATANG" — Playfair Display w700, 28, primaryDark
   static TextStyle get welcome => GoogleFonts.playfairDisplay(
-        color: AppColors.primaryDark,
+        color: AppColors.primary,
         fontSize: 28,
         fontWeight: FontWeight.w700,
         height: 1.29,
@@ -369,16 +369,16 @@ class AppTextStyles {
   // Tab/nav label
   static TextStyle get navLabel => GoogleFonts.plusJakartaSans(
         fontSize: 12,
-        fontWeight: FontWeight.w500,
+        fontWeight: FontWeight.w600,
         height: 1.33,
         color: AppColors.textSecondary,
       );
 
   static TextStyle get navLabelSelected => GoogleFonts.plusJakartaSans(
         fontSize: 12,
-        fontWeight: FontWeight.w500,
+        fontWeight: FontWeight.w600,
         height: 1.33,
-        color: AppColors.primaryDark,
+        color: AppColors.primary,
       );
 
   AppTextStyles._();
