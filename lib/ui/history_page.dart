@@ -110,7 +110,7 @@ class _HistoryFilters extends StatelessWidget {
               color: Colors.transparent,
               child: InkWell(
                 onTap: () => onSelected(i),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(10),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
                   height: 38,
@@ -119,7 +119,7 @@ class _HistoryFilters extends StatelessWidget {
                     color: selected == i
                         ? AppColors.primary
                         : AppColors.chipBackground,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
                     labels[i],

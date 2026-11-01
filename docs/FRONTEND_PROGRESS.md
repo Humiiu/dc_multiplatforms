@@ -428,3 +428,22 @@ Perubahan:
 Verifikasi:
 - `flutter analyze` — 0 error, 0 warning (bersih).
 - `flutter test` — 34 test seluruhnya lulus.
+
+
+## 29. Koreksi Presisi Corner Radius Filter Tab History ke Rounded Rectangle 10 dp (02 Nov 2026)
+
+Task: Mengoreksi corner radius filter tabs _HistoryFilters ('Semua', 'Sudah Lunas', 'Belum Lunas') dari 20 dp (kapsul/oval) menjadi rounded rectangle 10 dp persis sesuai analisis piksel pada gambar acuan desain docs/history.png.
+
+Akar Masalah:
+- Sebelumnya pada commit 9eb032a dan 7e048f1, corner radius filter tabs diset ke BorderRadius.circular(20). Dengan tinggi tombol 38 dp, radius 20 dp menghasilkan bentuk kapsul/stadium oval penuh.
+- Berdasarkan verifikasi piksel langsung pada docs/history.png (tinggi tombol 36 px pada canvas 437 px), kurva sudut tombol dimulai 10 piksel dari sisi atas dan kiri, yang membuktikan radius aslinya adalah rounded rectangle 10 dp (bukan kapsul bulat).
+
+Perubahan:
+- lib/ui/history_page.dart:
+  * Mengembalikan borderRadius pada InkWell dan BoxDecoration _HistoryFilters menjadi BorderRadius.circular(10).
+- docs/design-specs/history.md:
+  * Memperbarui spesifikasi tab filter menjadi radius 10.
+
+Verifikasi:
+- flutter analyze — 0 error, 0 warning (bersih).
+- flutter test — 34 test seluruhnya lulus.
