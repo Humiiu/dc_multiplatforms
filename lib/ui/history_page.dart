@@ -97,42 +97,37 @@ class _HistoryFilters extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const labels = ['Semua', 'Sudah Lunas', 'Belum Lunas'];
-    const flexes = [7, 10, 8];
+    const labels = ['All', 'Paid', 'Unpaid'];
 
     return Row(
       children: [
         for (var i = 0; i < labels.length; i++) ...[
-          if (i > 0) const SizedBox(width: 12),
-          Expanded(
-            flex: flexes[i],
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () => onSelected(i),
-                borderRadius: BorderRadius.circular(12),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  height: 38,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
+          if (i > 0) const SizedBox(width: 10),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => onSelected(i),
+              borderRadius: BorderRadius.circular(12),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                height: 38,
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: selected == i
+                      ? AppColors.primary
+                      : AppColors.chipBackground,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  labels[i],
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
                     color: selected == i
-                        ? AppColors.primary
-                        : AppColors.chipBackground,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    labels[i],
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: selected == i
-                          ? Colors.white
-                          : AppColors.inkVariant,
-                      height: 1.2,
-                    ),
+                        ? Colors.white
+                        : AppColors.inkVariant,
+                    height: 1.2,
                   ),
                 ),
               ),

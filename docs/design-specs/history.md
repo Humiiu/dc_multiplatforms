@@ -7,7 +7,7 @@
   - SizedBox(height: 4).
   - Subtitle **hhhhhhhhhhhhhhistory** (left-aligned, style `AppTextStyles.bodySmall`, color `AppColors.textSecondary`).
   - SizedBox(height: 14).
-  - `_HistoryFilters` widget (Row filter tabs: Semua, Sudah Lunas, Belum Lunas; height 38, radius 12, flat, flex [7, 10, 8], gap 12).
+  - `_HistoryFilters` widget (Compact filter chips: All, Paid, Unpaid; height 38, horizontal padding 18, radius 12, gap 10).
   - SizedBox(height: 16).
   - If `orders.isEmpty` -> centered placeholder text **Tidak ada pesanan pada filter ini.**
   - Else → list of `_HistoryCard` for each order:
@@ -56,6 +56,6 @@
 ## Exact Text
 - Header: **History**
 - Sub‑header: **hhhhhhhhhhhhhhistory**
-- Filter tabs: **Semua**, **Sudah Lunas**, **Belum Lunas**
+- Filter tabs: **All**, **Paid**, **Unpaid**
 - Button: **Pay Now** (borderRadius: 8)
 - Placeholder when empty: **Tidak ada pesanan pada filter ini.**

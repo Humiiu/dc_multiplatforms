@@ -56,7 +56,8 @@ Rules ini berlaku untuk seluruh proses development aplikasi Dian Catering (desai
 ### H. Protokol Git Commit & Backup Antar Perangkat (WAJIB SETIAP MILESTONE / PROGRES)
 - Setiap kali suatu task/revisi/fitur selesai dan lulus verifikasi (`flutter analyze` & `flutter test` bersih):
   - **Wajib lakukan Git Commit** dengan gaya pesan: **Bahasa Indonesia santai/gaul, huruf kecil semua di awal (tanpa kapital), yang penting ada inti informasinya** (contoh: `revisi desain home page`, `benerin navbar history`, `gatau, buat ganti device`, `pasang pull to refresh di home`).
-  - *Catatan*: Gaya santai dan huruf kecil ini KHUSUS untuk pesan `git commit` saja. Output respons chat asisten TETAP rapi, profesional, dan terstruktur seperti biasa.
+  - *Catatan Penting*: Gaya santai dan huruf kecil ini KHUSUS untuk pesan `git commit` saja. Output respons chat asisten TETAP rapi, profesional, dan terstruktur seperti biasa.
+  - **Pengecualian Minor Changes (Tweak Kecil)**: Jika hanya ada revisi kecil/minor (misal: ubah label kata, tweak margin/radius 1-2 dp, dsb.), **JANGAN langsung di-commit setiap kali ubah**. Biarkan terakumulasi di working tree, atau tanyakan kepada pengguna setelah beberapa perubahan minor terkumpul: *"apakah perubahan minor ini mau di-commit sekarang atau lanjut dulu?"*. Commit wajib dilakukan saat milestone/fitur selesai, bugfix penting, atau atas izin pengguna.
   - Ini memastikan tersedianya checkpoint aman kapan pun dibutuhkan rollback / reverse jika ada bug fatal.
   - Berikan pengingat atau jalankan push (`git push origin master`) agar kode tersimpan aman di cloud repository GitHub (`https://github.com/Humiiu/dc_multiplatforms`) untuk sinkronisasi antar perangkat ngoding.
 
