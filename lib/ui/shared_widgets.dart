@@ -110,6 +110,7 @@ class DemoPrimaryButton extends StatelessWidget {
   final double height;
   final double? fontSize;
   final double borderRadius;
+  final bool isLoading;
 
   const DemoPrimaryButton({
     super.key,
@@ -119,11 +120,12 @@ class DemoPrimaryButton extends StatelessWidget {
     this.height = 52,
     this.fontSize,
     this.borderRadius = 14,
+    this.isLoading = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final bool enabled = onPressed != null;
+    final bool enabled = onPressed != null && !isLoading;
     return Container(
       width: double.infinity,
       height: height,
@@ -138,28 +140,38 @@ class DemoPrimaryButton extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(borderRadius),
-          onTap: onPressed,
+          onTap: enabled ? onPressed : null,
           child: Center(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  label,
-                  style: fontSize != null
-                      ? AppTextStyles.buttonLarge.copyWith(fontSize: fontSize)
-                      : AppTextStyles.buttonLarge,
-                ),
-                if (icon != null) ...[
-                  SizedBox(width: height < 45 ? 6 : 8),
-                  Icon(
-                    icon,
-                    color: Colors.white,
-                    size: fontSize != null ? (fontSize! * 1.15) : 19,
+            child: isLoading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2.2,
+                    ),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        label,
+                        style: fontSize != null
+                            ? AppTextStyles.buttonLarge
+                                .copyWith(fontSize: fontSize)
+                            : AppTextStyles.buttonLarge,
+                      ),
+                      if (icon != null) ...[
+                        SizedBox(width: height < 45 ? 6 : 8),
+                        Icon(
+                          icon,
+                          color: Colors.white,
+                          size: fontSize != null ? (fontSize! * 1.15) : 19,
+                        ),
+                      ],
+                    ],
                   ),
-                ],
-              ],
-            ),
           ),
         ),
       ),

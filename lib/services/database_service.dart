@@ -7,7 +7,7 @@ import '../models/order.dart';
 final databaseServiceProvider = Provider<DatabaseService>((ref) => DatabaseService());
 
 class DatabaseService {
-  final DatabaseReference _root = FirebaseDatabase.instance.ref();
+  DatabaseReference get _root => FirebaseDatabase.instance.ref();
 
   // ---------- USER ----------
   Future<void> setUser(String uid, AppUser user) async {
@@ -15,7 +15,7 @@ class DatabaseService {
       // Write user data + lookup indexes in one batch
       final updates = <String, dynamic>{
         'users/$uid': user.toMap(),
-        'usernames/${user.username}': {'uid': uid},
+        'usernames/${user.username.trim().toLowerCase()}': {'uid': uid},
         'phones/${user.phone}': {'uid': uid},
       };
       await _root.update(updates);
@@ -49,7 +49,7 @@ class DatabaseService {
   /// Check if username is already taken (via lookup index)
   Future<bool> isUsernameTaken(String username) async {
     try {
-      final snap = await _root.child('usernames').child(username).get();
+      final snap = await _root.child('usernames').child(username.trim().toLowerCase()).get();
       return snap.exists;
     } catch (e) {
       debugPrint('[DatabaseService] isUsernameTaken error: $e');
@@ -71,7 +71,7 @@ class DatabaseService {
   /// Look up user by username via /usernames lookup index
   Future<AppUser?> getUserByUsername(String username) async {
     try {
-      final snap = await _root.child('usernames').child(username).get();
+      final snap = await _root.child('usernames').child(username.trim().toLowerCase()).get();
       if (!snap.exists || snap.value == null) return null;
       final data = snap.value as Map;
       final uid = data['uid'] as String?;

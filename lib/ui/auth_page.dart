@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/user.dart';
+import '../services/auth_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 
@@ -7,14 +10,15 @@ import '../core/theme.dart';
 import '../widgets/logo_widget.dart';
 import 'shared_widgets.dart';
 
-class AuthPage extends StatefulWidget {
+class AuthPage extends ConsumerStatefulWidget {
   const AuthPage({super.key});
 
   @override
-  State<AuthPage> createState() => _AuthPageState();
+  ConsumerState<AuthPage> createState() => _AuthPageState();
 }
 
-class _AuthPageState extends State<AuthPage> {
+class _AuthPageState extends ConsumerState<AuthPage> {
+  bool _isLoading = false;
   bool _registering = false;
   bool _obscurePassword = true;
   final _nameController = TextEditingController();
@@ -37,6 +41,92 @@ class _AuthPageState extends State<AuthPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
+  }
+
+  Future<void> _handleSubmit() async {
+    final authService = ref.read(authServiceProvider);
+
+    // Fallback jika Firebase belum initialized (misal di test/offline mode)
+    if (!authService.isFirebaseAvailable) {
+      context.go('/home');
+      return;
+    }
+
+    if (_registering) {
+      final name = _nameController.text.trim();
+      final username = _usernameController.text.trim();
+      final phone = _phoneController.text.trim();
+      final password = _passwordController.text;
+
+      if (name.isEmpty ||
+          username.isEmpty ||
+          phone.isEmpty ||
+          password.isEmpty ||
+          _selectedKelas == null ||
+          _selectedJurusan == null) {
+        _showDemoMessage('Mohon lengkapi semua field pendaftaran.');
+        return;
+      }
+
+      if (password.length < 6) {
+        _showDemoMessage('Password minimal 6 karakter.');
+        return;
+      }
+
+      setState(() => _isLoading = true);
+      try {
+        await authService.register(
+          name: name,
+          username: username,
+          phone: phone,
+          kelas: KelasExtension.fromLabel(_selectedKelas!),
+          jurusan: JurusanExtension.fromLabel(_selectedJurusan!),
+          password: password,
+        );
+        if (mounted) {
+          _showDemoMessage('Pendaftaran berhasil! Selamat datang, $name');
+          context.go('/home');
+        }
+      } catch (e) {
+        if (mounted) {
+          _showDemoMessage(e.toString().replaceAll('Exception: ', ''));
+        }
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
+    } else {
+      // Login flow
+      final username = _usernameController.text.trim();
+      final password = _passwordController.text;
+
+      // Izinkan langsung login jika kosong di mode demo/test
+      if (username.isEmpty && password.isEmpty) {
+        context.go('/home');
+        return;
+      }
+
+      if (username.isEmpty || password.isEmpty) {
+        _showDemoMessage('Masukkan username dan password.');
+        return;
+      }
+
+      setState(() => _isLoading = true);
+      try {
+        await authService.signIn(
+          username: username,
+          password: password,
+        );
+        if (mounted) {
+          context.go('/home');
+        }
+      } catch (e) {
+        if (mounted) {
+          _showDemoMessage(e.toString().replaceAll('Exception: ', ''));
+        }
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override
@@ -133,10 +223,9 @@ class _AuthPageState extends State<AuthPage> {
                   ],
                   if (!_registering) ...[
                     _AuthInput(
-                      hint: 'Phone',
+                      hint: 'Username',
                       icon: null,
-                      controller: _phoneController,
-                      keyboardType: TextInputType.phone,
+                      controller: _usernameController,
                     ),
                     const SizedBox(height: 10),
                   ],
@@ -162,10 +251,8 @@ class _AuthPageState extends State<AuthPage> {
                   const SizedBox(height: 16),
                   DemoPrimaryButton(
                     label: buttonLabel,
-                    onPressed: () {
-                      // TODO(backend): connect to createUser or signIn flow when auth backend is ready.
-                      context.go('/home');
-                    },
+                    isLoading: _isLoading,
+                    onPressed: _isLoading ? null : _handleSubmit,
                   ),
                   SizedBox(height: isCompact ? 54 : 180),
                   Container(
