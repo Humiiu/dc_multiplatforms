@@ -7,7 +7,7 @@
   - SizedBox(height: 4).
   - Subtitle **hhhhhhhhhhhhhhistory** (left-aligned, style `AppTextStyles.bodySmall`, color `AppColors.textSecondary`).
   - SizedBox(height: 14).
-  - `_HistoryFilters` widget (Row filter tabs: Semua, Sudah Lunas, Belum Lunas; height 38, radius 10, flat, flex [7, 10, 8], gap 12).
+  - `_HistoryFilters` widget (Row filter tabs: Semua, Sudah Lunas, Belum Lunas; height 38, radius 12, flat, flex [7, 10, 8], gap 12).
   - SizedBox(height: 16).
   - If `orders.isEmpty` -> centered placeholder text **Tidak ada pesanan pada filter ini.**
   - Else → list of `_HistoryCard` for each order:
