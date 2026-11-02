@@ -120,3 +120,4 @@ Dokumen ini adalah sumber kebenaran struktur data aplikasi Dian Catering yang me
 * `menus`: Dapat dibaca oleh semua user yang sudah login. Hanya admin yang dapat membuat/mengedit menu.
 * `orders`: Siswa hanya dapat membaca pesanan dengan `userId == auth.uid`. Admin dapat membaca dan mengubah status semua order.
 * `debts`: Siswa dapat membaca status tagihan miliknya. Perubahan saldo hutang divalidasi dengan plafon Rp 100.000.
+

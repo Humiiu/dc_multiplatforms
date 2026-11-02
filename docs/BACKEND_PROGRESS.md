@@ -8,7 +8,7 @@ Dokumen ini mencatat seluruh perkembangan implementasi backend aplikasi Dian Cat
 
 - **Setup & Arsitektur Database**: Selesai dirancang menggunakan **Firebase Realtime Database (RTDB)** dan **Firebase Authentication** dengan email masking virtual (`username@diancatering.app`). Dokumen acuan `docs/DATA_MODEL.md` telah dibuat.
 - **Fitur 1: Autentikasi & Registrasi Akun**: Selesai. Form Login & Register di `lib/ui/auth_page.dart` sudah terhubung ke `AuthService` dan `DatabaseService` dengan validasi lengkap, email masking virtual, loading state, dan unit testing.
-- **Fitur 2: Profil Siswa**: Belum dimulai.
+- **Fitur 2: Profil Siswa**: Selesai. Data nama, kelas, jurusan, dan nomor telepon ditampilkan dinamis di `ProfilePage` dan sapaan `HomePage` melalui `currentUserProfileProvider`. Dialog edit profil nama, ubah password akun, integrasi WhatsApp admin dinamis, serta tombol Logout telah aktif.
 - **Fitur 3: Menu Mingguan Dinamis**: Belum dimulai.
 - **Fitur 4: Pemesanan & Alur Order**: Belum dimulai.
 - **Fitur 5: Tagihan & Pay Later (Ngutang)**: Belum dimulai.
@@ -53,4 +53,8 @@ Task: Memulai fase backend aplikasi Dian Catering. Menyusun dokumen acuan `docs/
 
 ### 02. Implementasi Fitur 1: Autentikasi & Registrasi Akun (02 Nov 2026)
 Task: Mengimplementasikan `AuthService` dengan masking email virtual (`username@diancatering.app`), menghubungkan form Login dan Register di `AuthPage` ke Firebase Auth dan Realtime Database, menambahkan handling loading indicator di tombol utama, serta menambahkan unit test sanitasi masking.
+Verifikasi: `flutter analyze` bersih (0 issues), `flutter test` lulus (38 tests passed).
+
+### 03. Implementasi Fitur 2: Profil Siswa & Sapaan Dinamis (02 Nov 2026)
+Task: Menghubungkan profil pengguna pada `ProfilePage` dan sapaan `HomePage` ke Firebase RTDB via `currentUserProfileProvider`. Mengaktifkan dialog edit nama profil, ubah password Firebase Auth, integrasi WhatsApp admin dinamis berdasarkan nama/kelas siswa aktif, serta logout session.
 Verifikasi: `flutter analyze` bersih (0 issues), `flutter test` lulus (38 tests passed).

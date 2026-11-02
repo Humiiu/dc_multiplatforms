@@ -60,3 +60,7 @@ firestore.indexes.json
 
 # Analysis
 analysis_output.txt
+
+# Telegram Bridge
+tools/telegram_bridge/config.json
+tools/telegram_bridge/*.png

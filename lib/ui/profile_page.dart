@@ -1,14 +1,27 @@
+import '../models/user.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/theme.dart';
+import '../providers/user_provider.dart';
 import '../services/admin_whatsapp_service.dart';
+import '../services/auth_service.dart';
+import '../services/database_service.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final userAsync = ref.watch(currentUserProfileProvider);
+    final user = userAsync.value;
+
+    final displayName = (user != null && user.name.isNotEmpty) ? user.name : 'Humiiu';
+    final displayClass = user != null ? 'Class ${user.kelas.label}' : 'Class XII IPS 2';
+    final displayMajor = user != null ? 'Major: ${user.jurusan.label}' : 'Major: MIPA';
+    final displayPhone = (user != null && user.phone.isNotEmpty) ? user.phone : '0899-XXXX-XXXX';
+
     return Scaffold(
       body: SafeArea(
         bottom: false,
@@ -33,7 +46,7 @@ class ProfilePage extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'Humiiu',
+              displayName,
               textAlign: TextAlign.center,
               style: AppTextStyles.welcome.copyWith(
                 color: AppColors.textPrimary,
@@ -44,14 +57,14 @@ class ProfilePage extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _ProfileTag(label: 'Class XII IPS 2'),
+                _ProfileTag(label: displayClass),
                 const SizedBox(width: 8),
-                _ProfileTag(label: 'Major: MIPA'),
+                _ProfileTag(label: displayMajor),
               ],
             ),
             const SizedBox(height: 14),
             Text(
-              '0899-XXXX-XXXX',
+              displayPhone,
               textAlign: TextAlign.center,
               style: AppTextStyles.bodyLarge.copyWith(
                 color: AppColors.textSecondary,
@@ -63,7 +76,7 @@ class ProfilePage extends StatelessWidget {
               color: const Color(0xFFA40B42),
               title: 'Edit Profile',
               subtitle: 'Update your personal information',
-              onTap: () => _showDemoDialog(context, 'Edit Profile'),
+              onTap: () => _showEditProfileDialog(context, ref, user),
             ),
             const SizedBox(height: 14),
             _ProfileAction(
@@ -71,7 +84,7 @@ class ProfilePage extends StatelessWidget {
               color: AppColors.gold,
               title: 'Ubah Password',
               subtitle: 'Secure your account',
-              onTap: () => _showDemoDialog(context, 'Ubah Password'),
+              onTap: () => _showChangePasswordDialog(context, ref),
             ),
             const SizedBox(height: 14),
             _ProfileAction(
@@ -79,12 +92,17 @@ class ProfilePage extends StatelessWidget {
               color: const Color(0xFF9B0053),
               title: 'Hubungi Admin',
               subtitle: 'Get help with your orders',
-              onTap: () => _showAdminSheet(context),
+              onTap: () => _showAdminSheet(context, displayName, displayClass),
             ),
             const SizedBox(height: 36),
             Center(
               child: TextButton.icon(
-                onPressed: () => context.go('/auth'),
+                onPressed: () async {
+                  await ref.read(authServiceProvider).signOut();
+                  if (context.mounted) {
+                    context.go('/auth');
+                  }
+                },
                 icon: const Icon(Icons.logout, size: 18),
                 label: const Text('Logout'),
                 style: TextButton.styleFrom(
@@ -99,23 +117,131 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  void _showDemoDialog(BuildContext context, String title) {
+  void _showEditProfileDialog(BuildContext context, WidgetRef ref, dynamic user) {
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profil belum tersedia pada mode demo.')),
+      );
+      return;
+    }
+
+    final nameController = TextEditingController(text: user.name as String);
     showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: const Text('Aksi ini belum terhubung ke backend.'),
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('Edit Profile'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Nama Lengkap', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+            const SizedBox(height: 6),
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(
+                hintText: 'Masukkan nama lengkap',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+          ],
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Tutup'),
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            onPressed: () async {
+              final newName = nameController.text.trim();
+              if (newName.isEmpty) return;
+              Navigator.pop(dialogCtx);
+              try {
+                await ref.read(databaseServiceProvider).updateUser(user.uid as String, {'name': newName});
+                ref.invalidate(currentUserProfileProvider);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Profil berhasil diperbarui')),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Gagal memperbarui profil: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('Simpan', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
   }
 
-  void _showAdminSheet(BuildContext context) {
+  void _showChangePasswordDialog(BuildContext context, WidgetRef ref) {
+    final passwordController = TextEditingController();
+    showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('Ubah Password'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Password Baru', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+            const SizedBox(height: 6),
+            TextField(
+              controller: passwordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                hintText: 'Minimal 6 karakter',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            onPressed: () async {
+              final newPass = passwordController.text.trim();
+              if (newPass.length < 6) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Password minimal 6 karakter')),
+                );
+                return;
+              }
+              Navigator.pop(dialogCtx);
+              try {
+                await ref.read(authServiceProvider).updatePassword(newPass);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Password berhasil diubah')),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Gagal mengubah password: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('Simpan', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAdminSheet(BuildContext context, String userName, String userClass) {
     showModalBottomSheet<void>(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -129,8 +255,8 @@ class ProfilePage extends StatelessWidget {
               Navigator.pop(sheetContext);
               AdminWhatsappService.open(
                 purpose: AdminWhatsappPurpose.menuRequest,
-                name: 'Humiiu',
-                kelas: 'XII IPS 2',
+                name: userName,
+                kelas: userClass,
                 details: 'Menu favorit saya...',
               );
             },
@@ -141,8 +267,8 @@ class ProfilePage extends StatelessWidget {
               Navigator.pop(sheetContext);
               AdminWhatsappService.open(
                 purpose: AdminWhatsappPurpose.allergyPreference,
-                name: 'Humiiu',
-                kelas: 'XII IPS 2',
+                name: userName,
+                kelas: userClass,
                 details: 'Saya tidak suka pedas dan alergi kacang',
               );
             },
@@ -153,8 +279,8 @@ class ProfilePage extends StatelessWidget {
               Navigator.pop(sheetContext);
               AdminWhatsappService.open(
                 purpose: AdminWhatsappPurpose.complaint,
-                name: 'Humiiu',
-                kelas: 'XII IPS 2',
+                name: userName,
+                kelas: userClass,
                 details: 'Ada masalah pada pengiriman minggu ini',
               );
             },
@@ -165,8 +291,8 @@ class ProfilePage extends StatelessWidget {
               Navigator.pop(sheetContext);
               AdminWhatsappService.open(
                 purpose: AdminWhatsappPurpose.other,
-                name: 'Humiiu',
-                kelas: 'XII IPS 2',
+                name: userName,
+                kelas: userClass,
                 details: 'Saya butuh bantuan terkait pesanan saya',
               );
             },

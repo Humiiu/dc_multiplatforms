@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 
 import '../core/greetings.dart';
 import '../core/theme.dart';
+import '../models/user.dart';
+import '../providers/user_provider.dart';
 import '../services/admin_whatsapp_service.dart';
 import 'demo_state.dart';
 import 'shared_widgets.dart';
@@ -24,6 +26,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   Timer? _menuTimer;
 
   Future<void> _onRefresh() async {
+    ref.invalidate(currentUserProfileProvider);
     // TODO(backend): refresh menu mingguan, status tagihan, dan profil user dari Firebase/API.
     await Future.delayed(const Duration(milliseconds: 700));
     if (mounted) {
@@ -59,6 +62,10 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final userAsync = ref.watch(currentUserProfileProvider);
+    final user = userAsync.value;
+    final displayName = (user != null && user.name.isNotEmpty) ? user.name : 'Humiiu';
+    final displayClass = user != null ? user.kelas.label : 'XII IPS 2';
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -71,11 +78,11 @@ class _HomePageState extends ConsumerState<HomePage> {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
           children: [
-            DemoTopBar(showBrand: true, onHelpTap: () => _showHelpSheet(context)),
+            DemoTopBar(showBrand: true, onHelpTap: () => _showHelpSheet(context, displayName, displayClass)),
             const SizedBox(height: 8),
             Text('WELCOME', style: AppText.overline),
             const SizedBox(height: 4),
-            Text('$_greeting, Humiiu!', style: AppText.greeting),
+            Text('$_greeting, $displayName!', style: AppText.greeting),
             const SizedBox(height: 24),
             _DebtCard(
               onTap: () {
@@ -94,7 +101,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               menus: _kMenus,
             ),
             const SizedBox(height: 32),
-            _RequestCard(onTap: () => _showAdminSheet(context)),
+            _RequestCard(onTap: () => _showAdminSheet(context, displayName, displayClass)),
             const SizedBox(height: 24),
             _PrimaryButton(
               label: 'Start Buying!',
@@ -108,7 +115,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  void _showHelpSheet(BuildContext context) {
+  void _showHelpSheet(BuildContext context, String userName, String userClass) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -172,8 +179,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                     Navigator.pop(sheetContext);
                     AdminWhatsappService.open(
                       purpose: AdminWhatsappPurpose.other,
-                      name: 'Humiiu',
-                      kelas: 'XII IPS 2',
+                      name: userName,
+                      kelas: userClass,
                       details: 'Halo admin, saya butuh bantuan terkait katering',
                     );
                   },
@@ -186,7 +193,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  void _showAdminSheet(BuildContext context) {
+  void _showAdminSheet(BuildContext context, String userName, String userClass) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -201,8 +208,8 @@ class _HomePageState extends ConsumerState<HomePage> {
               Navigator.pop(sheetContext);
               AdminWhatsappService.open(
                 purpose: AdminWhatsappPurpose.menuRequest,
-                name: 'Humiiu',
-                kelas: 'XII IPS 2',
+                name: userName,
+                kelas: userClass,
                 details: 'Menu favorit saya...',
               );
             },
@@ -213,8 +220,8 @@ class _HomePageState extends ConsumerState<HomePage> {
               Navigator.pop(sheetContext);
               AdminWhatsappService.open(
                 purpose: AdminWhatsappPurpose.allergyPreference,
-                name: 'Humiiu',
-                kelas: 'XII IPS 2',
+                name: userName,
+                kelas: userClass,
                 details: 'Tidak suka pedas dan alergi kacang',
               );
             },
@@ -225,8 +232,8 @@ class _HomePageState extends ConsumerState<HomePage> {
               Navigator.pop(sheetContext);
               AdminWhatsappService.open(
                 purpose: AdminWhatsappPurpose.complaint,
-                name: 'Humiiu',
-                kelas: 'XII IPS 2',
+                name: userName,
+                kelas: userClass,
                 details: 'Pesanan minggu ini kurang sesuai jadwal pengiriman',
               );
             },
@@ -237,8 +244,8 @@ class _HomePageState extends ConsumerState<HomePage> {
               Navigator.pop(sheetContext);
               AdminWhatsappService.open(
                 purpose: AdminWhatsappPurpose.debtPayment,
-                name: 'Humiiu',
-                kelas: 'XII IPS 2',
+                name: userName,
+                kelas: userClass,
                 total: 60000,
                 periode: 'Oktober, Minggu 2',
               );
@@ -250,8 +257,8 @@ class _HomePageState extends ConsumerState<HomePage> {
               Navigator.pop(sheetContext);
               AdminWhatsappService.open(
                 purpose: AdminWhatsappPurpose.other,
-                name: 'Humiiu',
-                kelas: 'XII IPS 2',
+                name: userName,
+                kelas: userClass,
                 details: 'Saya butuh bantuan terkait jadwal pengiriman',
               );
             },
