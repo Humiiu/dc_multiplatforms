@@ -146,10 +146,45 @@ class DatabaseService {
   }
 
   // ---------- ORDER ----------
-  Future<void> createOrder(Order order) async {
+  Future<String> createOrder(Order order) async {
     try {
-      final newRef = _root.child('orders').push();
-      await newRef.set(order.toMap());
+      final newRef = order.id.isNotEmpty ? _root.child('orders').child(order.id) : _root.child('orders').push();
+      final key = newRef.key ?? DateTime.now().millisecondsSinceEpoch.toString();
+      final orderWithId = Order(
+        id: key,
+        userId: order.userId,
+        userName: order.userName,
+        userPhone: order.userPhone,
+        userClass: order.userClass,
+        userMajor: order.userMajor,
+        week: order.week,
+        date: order.date,
+        days: order.days,
+        amount: order.amount,
+        payment: order.payment,
+        isPaid: order.isPaid,
+        status: order.status,
+        createdAt: order.createdAt,
+        dueDate: order.dueDate,
+        paidAt: order.paidAt,
+      );
+
+      final updates = <String, dynamic>{
+        'orders/$key': orderWithId.toMap(),
+        if (order.userId.isNotEmpty) 'user_orders/${order.userId}/$key': true,
+      };
+
+      if (!order.isPaid && order.userId.isNotEmpty) {
+        final currentDebt = await getUserDebt(order.userId);
+        updates['debts/${order.userId}'] = {
+          'amount': (currentDebt + order.amount).clamp(0, 100000),
+          'limit': 100000,
+          'lastUpdated': DateTime.now().millisecondsSinceEpoch,
+        };
+      }
+
+      await _root.update(updates);
+      return key;
     } catch (e) {
       debugPrint('[DatabaseService] createOrder error: $e');
       rethrow;
@@ -165,14 +200,31 @@ class DatabaseService {
           .get();
       if (!snap.exists) return [];
       final Map<String, dynamic> map = (snap.value as Map).cast<String, dynamic>();
-      return map.entries
+      final orders = map.entries
           .map((e) => Order.fromMap(e.key, e.value as Map))
           .toList();
+      orders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return orders;
     } catch (e) {
       // Graceful fallback — show empty state instead of crash
       debugPrint('[DatabaseService] getUserOrders error: $e');
       return [];
     }
+  }
+
+  /// Stream riwayat order siswa secara real-time
+  Stream<List<Order>> watchUserOrders(String uid) {
+    return _root.child('orders').orderByChild('userId').equalTo(uid).onValue.map((event) {
+      final val = event.snapshot.value;
+      if (val is Map) {
+        final list = val.entries
+            .map((e) => Order.fromMap(e.key.toString(), e.value as Map))
+            .toList();
+        list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        return list;
+      }
+      return <Order>[];
+    });
   }
 
   /// Get all active (unpaid) orders for a specific user - used for Tagihan Kamu
@@ -195,19 +247,88 @@ class DatabaseService {
     }
   }
 
-  /// Mark order as paid (with error handling)
+  /// Mark order as paid (with debt recalculation)
   Future<void> markPaid(String orderId) async {
     try {
-      await _root.child('orders').child(orderId).child('isPaid').set(true);
-      await _root
-          .child('orders')
-          .child(orderId)
-          .child('paidAt')
-          .set(DateTime.now().millisecondsSinceEpoch);
+      final snap = await _root.child('orders').child(orderId).get();
+      if (snap.exists && snap.value != null) {
+        final orderMap = snap.value as Map;
+        final userId = orderMap['userId'] as String?;
+        final amount = ((orderMap['amount'] ?? orderMap['totalPrice'] ?? 0) as num).toInt();
+        final wasPaid = (orderMap['isPaid'] as bool?) ?? false;
+
+        final updates = <String, dynamic>{
+          'orders/$orderId/isPaid': true,
+          'orders/$orderId/status': 'completed',
+          'orders/$orderId/paidAt': DateTime.now().millisecondsSinceEpoch,
+        };
+
+        if (!wasPaid && userId != null && userId.isNotEmpty) {
+          final currentDebt = await getUserDebt(userId);
+          final newDebt = (currentDebt - amount).clamp(0, 100000);
+          updates['debts/$userId/amount'] = newDebt;
+          updates['debts/$userId/lastUpdated'] = DateTime.now().millisecondsSinceEpoch;
+        }
+
+        await _root.update(updates);
+      } else {
+        await _root.child('orders').child(orderId).update({
+          'isPaid': true,
+          'status': 'completed',
+          'paidAt': DateTime.now().millisecondsSinceEpoch,
+        });
+      }
     } catch (e) {
       debugPrint('[DatabaseService] markPaid error: $e');
       rethrow;
     }
+  }
+
+  // ---------- DEBTS ----------
+  Future<int> getUserDebt(String uid) async {
+    try {
+      final snap = await _root.child('debts').child(uid).get();
+      if (!snap.exists || snap.value == null) return 0;
+      final data = snap.value as Map;
+      return ((data['amount'] ?? 0) as num).toInt();
+    } catch (e) {
+      debugPrint('[DatabaseService] getUserDebt error: $e');
+      return 0;
+    }
+  }
+
+  Future<void> setUserDebt(String uid, int amount) async {
+    try {
+      await _root.child('debts').child(uid).set({
+        'amount': amount.clamp(0, 100000),
+        'limit': 100000,
+        'lastUpdated': DateTime.now().millisecondsSinceEpoch,
+      });
+    } catch (e) {
+      debugPrint('[DatabaseService] setUserDebt error: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> payDebt(String uid, int paymentAmount) async {
+    try {
+      final current = await getUserDebt(uid);
+      final newAmount = (current - paymentAmount).clamp(0, 100000);
+      await setUserDebt(uid, newAmount);
+    } catch (e) {
+      debugPrint('[DatabaseService] payDebt error: $e');
+      rethrow;
+    }
+  }
+
+  Stream<int> watchUserDebt(String uid) {
+    return _root.child('debts').child(uid).onValue.map((event) {
+      final val = event.snapshot.value;
+      if (val is Map) {
+        return ((val['amount'] ?? 0) as num).toInt();
+      }
+      return 0;
+    });
   }
 
   // ---------- ADMIN ----------

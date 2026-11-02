@@ -5,7 +5,7 @@ extension PaymentMethodExtension on PaymentMethod {
         PaymentMethod.qris => 'QRIS',
         PaymentMethod.virtualAccount => 'Virtual Account',
         PaymentMethod.eWallet => 'E-Wallet',
-        PaymentMethod.hutang => 'Hutang',
+        PaymentMethod.hutang => 'Pay Later',
       };
 
   String get subtitle => switch (this) {
@@ -17,95 +17,132 @@ extension PaymentMethodExtension on PaymentMethod {
       };
 }
 
-/// Order model for catering bookings.
+/// Order model for Dian Catering sesuai dokumen DATA_MODEL.md
 class Order {
   final String id;
   final String userId;
-  final List<String> selectedDays; // e.g., ["senin", "selasa"]
-  final Map<String, List<String>> menuPerDay; // day -> list of menu IDs
-  final int totalPrice; // in Rupiah
+  final String userName;
+  final String userPhone;
+  final String userClass;
+  final String userMajor;
+  final String week; // e.g. "Oktober, Minggu 2"
+  final String date; // e.g. "27 Okt 2026 • 11:06 WIB"
+  final List<String> days; // ["Senin", "Selasa"]
+  final int amount; // total bayar dlm Rupiah (flat Rp 20.000 / hari)
+  final String payment; // 'QRIS', 'Pay Later', 'Virtual Account', 'E-Wallet'
   final bool isPaid;
-  final PaymentMethod paymentMethod;
+  final String status; // 'pending', 'confirmed', 'rejected', 'completed'
   final DateTime createdAt;
-  final DateTime? dueDate; // jatuh tempo (minggu yang sama)
-  final DateTime? paidAt; // when payment was completed
+  final DateTime? dueDate;
+  final DateTime? paidAt;
 
   Order({
     required this.id,
     required this.userId,
-    required this.selectedDays,
-    required this.menuPerDay,
-    required this.totalPrice,
+    this.userName = '',
+    this.userPhone = '',
+    this.userClass = '',
+    this.userMajor = '',
+    this.week = '',
+    this.date = '',
+    required this.days,
+    required this.amount,
+    required this.payment,
     required this.isPaid,
-    required this.paymentMethod,
+    this.status = 'confirmed',
     required this.createdAt,
     this.dueDate,
     this.paidAt,
   });
 
-  factory Order.fromMap(String id, Map<dynamic, dynamic> map) => Order(
-        id: id,
-        userId: map['userId'] as String,
-        selectedDays: List<String>.from(map['selectedDays']),
-        menuPerDay: (map['menuPerDay'] as Map).map(
-          (k, v) => MapEntry(k as String, List<String>.from(v as List)),
-        ),
-        totalPrice: map['totalPrice'] as int,
-        isPaid: map['isPaid'] as bool,
-        paymentMethod: _parsePaymentMethod(map['paymentMethod'] as String?),
-        createdAt:
-            DateTime.fromMillisecondsSinceEpoch(map['createdAt'] as int),
-        dueDate: map['dueDate'] != null
-            ? DateTime.fromMillisecondsSinceEpoch(map['dueDate'] as int)
-            : null,
-        paidAt: map['paidAt'] != null
-            ? DateTime.fromMillisecondsSinceEpoch(map['paidAt'] as int)
-            : null,
-      );
+  // Backward compatibility getters
+  List<String> get selectedDays => days.map((d) => d.toLowerCase()).toList();
+  int get totalPrice => amount;
+  PaymentMethod get paymentMethod {
+    if (payment.toLowerCase().contains('later') || payment.toLowerCase().contains('hutang')) {
+      return PaymentMethod.hutang;
+    }
+    if (payment.toLowerCase().contains('virtual')) {
+      return PaymentMethod.virtualAccount;
+    }
+    if (payment.toLowerCase().contains('wallet')) {
+      return PaymentMethod.eWallet;
+    }
+    return PaymentMethod.qris;
+  }
+
+  factory Order.fromMap(String id, Map<dynamic, dynamic> map) {
+    // Menangani field 'days' atau 'selectedDays'
+    List<String> parsedDays = [];
+    if (map['days'] is List) {
+      parsedDays = List<String>.from(map['days']);
+    } else if (map['selectedDays'] is List) {
+      parsedDays = List<String>.from(map['selectedDays']).map((d) => _capitalize(d)).toList();
+    }
+
+    final createdAtMs = (map['createdAt'] as num?)?.toInt() ?? DateTime.now().millisecondsSinceEpoch;
+    final createdAt = DateTime.fromMillisecondsSinceEpoch(createdAtMs);
+
+    final amount = ((map['amount'] ?? map['totalPrice'] ?? (parsedDays.length * 20000)) as num).toInt();
+    final payment = (map['payment'] ?? map['paymentMethod'] ?? 'QRIS') as String;
+    final isPaid = (map['isPaid'] as bool?) ?? false;
+    final status = (map['status'] as String?) ?? (isPaid ? 'confirmed' : 'pending');
+
+    return Order(
+      id: id,
+      userId: (map['userId'] ?? '') as String,
+      userName: (map['userName'] ?? '') as String,
+      userPhone: (map['userPhone'] ?? '') as String,
+      userClass: (map['userClass'] ?? '') as String,
+      userMajor: (map['userMajor'] ?? '') as String,
+      week: (map['week'] ?? '') as String,
+      date: (map['date'] ?? '') as String,
+      days: parsedDays,
+      amount: amount,
+      payment: payment,
+      isPaid: isPaid,
+      status: status,
+      createdAt: createdAt,
+      dueDate: map['dueDate'] != null ? DateTime.fromMillisecondsSinceEpoch((map['dueDate'] as num).toInt()) : null,
+      paidAt: map['paidAt'] != null ? DateTime.fromMillisecondsSinceEpoch((map['paidAt'] as num).toInt()) : null,
+    );
+  }
 
   Map<String, dynamic> toMap() => {
+        'id': id,
         'userId': userId,
-        'selectedDays': selectedDays,
-        'menuPerDay': menuPerDay.map(
-          (k, v) => MapEntry(k, v),
-        ),
-        'totalPrice': totalPrice,
+        'userName': userName,
+        'userPhone': userPhone,
+        'userClass': userClass,
+        'userMajor': userMajor,
+        'week': week,
+        'date': date,
+        'days': days,
+        'amount': amount,
+        'payment': payment,
         'isPaid': isPaid,
-        'paymentMethod': paymentMethod.name,
+        'status': status,
         'createdAt': createdAt.millisecondsSinceEpoch,
-        'dueDate': dueDate?.millisecondsSinceEpoch,
-        'paidAt': paidAt?.millisecondsSinceEpoch,
+        if (dueDate != null) 'dueDate': dueDate!.millisecondsSinceEpoch,
+        if (paidAt != null) 'paidAt': paidAt!.millisecondsSinceEpoch,
       };
 
-  /// Get formatted week string (e.g., "Minggu 1 Oktober")
+  static String _capitalize(String s) {
+    if (s.isEmpty) return s;
+    return '${s[0].toUpperCase()}${s.substring(1)}';
+  }
+
+  /// Format label minggu pesanan
   String get weekLabel {
+    if (week.isNotEmpty) return week;
     final weekOfMonth = ((createdAt.day - 1) ~/ 7) + 1;
     final monthNames = [
-      'Januari',
-      'Februari',
-      'Maret',
-      'April',
-      'Mei',
-      'Juni',
-      'Juli',
-      'Agustus',
-      'September',
-      'Oktober',
-      'November',
-      'Desember',
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
     ];
     return 'Minggu $weekOfMonth ${monthNames[createdAt.month - 1]}';
   }
 
-  /// Check if order is hutang and overdue
+  /// Cek apakah pesanan hutang telah jatuh tempo
   bool get isOverdue => !isPaid && dueDate != null && DateTime.now().isAfter(dueDate!);
-}
-
-PaymentMethod _parsePaymentMethod(String? name) {
-  if (name == null) return PaymentMethod.hutang;
-  try {
-    return PaymentMethod.values.byName(name);
-  } catch (_) {
-    return PaymentMethod.hutang;
-  }
 }

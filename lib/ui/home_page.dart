@@ -9,6 +9,7 @@ import '../core/greetings.dart';
 import '../core/theme.dart';
 import '../models/user.dart';
 import '../providers/menu_provider.dart';
+import '../providers/order_provider.dart';
 import '../providers/user_provider.dart';
 import '../services/admin_whatsapp_service.dart';
 import 'demo_state.dart';
@@ -29,7 +30,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   Future<void> _onRefresh() async {
     ref.invalidate(currentUserProfileProvider);
     ref.invalidate(weeklyMenuProvider);
-    // TODO(backend): refresh status tagihan dari Firebase/API.
+    ref.invalidate(userDebtStreamProvider);
     await Future.delayed(const Duration(milliseconds: 700));
     if (mounted) {
       setState(() {
@@ -71,6 +72,8 @@ class _HomePageState extends ConsumerState<HomePage> {
     final displayName = (user != null && user.name.isNotEmpty) ? user.name : 'Humiiu';
     final displayClass = user != null ? user.kelas.label : 'XII IPS 2';
     final carouselMenus = ref.watch(homeMenuItemsProvider);
+    final debtAsync = ref.watch(userDebtStreamProvider);
+    final debtAmount = debtAsync.value ?? 60000;
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -90,8 +93,15 @@ class _HomePageState extends ConsumerState<HomePage> {
             Text('$_greeting, $displayName!', style: AppText.greeting),
             const SizedBox(height: 24),
             _DebtCard(
+              amount: debtAmount,
               onTap: () {
-                ref.read(demoOrderProvider.notifier).prepareDebtPayment(60000);
+                if (debtAmount <= 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Tidak ada tagihan hutang yang perlu dibayar.')),
+                  );
+                  return;
+                }
+                ref.read(demoOrderProvider.notifier).prepareDebtPayment(debtAmount);
                 context.push('/checkout');
               },
             ),
@@ -394,9 +404,10 @@ class _AdminSheetOption {
 // serta full-width Maroon gradient button dengan shadow glow.
 // ---------------------------------------------------------------------------
 class _DebtCard extends StatelessWidget {
+  final int amount;
   final VoidCallback onTap;
 
-  const _DebtCard({required this.onTap});
+  const _DebtCard({this.amount = 60000, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -520,7 +531,7 @@ class _DebtCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        '60.000',
+                        amount.toString().replaceAllMapped(RegExp(r'(\\d{1,3})(?=(\\d{3})+(?!\\d))'), (Match m) => '\${m[1]}.'),
                         style: AppText.amount.copyWith(
                           fontSize: 44,
                           fontWeight: FontWeight.w700,
