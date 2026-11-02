@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../core/theme.dart';
+import '../providers/menu_provider.dart';
 import 'demo_state.dart';
 import 'shared_widgets.dart';
 
@@ -11,6 +12,7 @@ class OrderPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final order = ref.watch(demoOrderProvider);
+    final days = ref.watch(orderDaysProvider);
     return Scaffold(
       body: SafeArea(
         bottom: false,
@@ -36,7 +38,7 @@ class OrderPage extends ConsumerWidget {
                   const SizedBox(height: 30),
                   _NumberedTitle(number: '1', title: 'Select Days'),
                   const SizedBox(height: 16),
-                  ...demoDays.map(
+                  ...days.map(
                     (day) => _DayCard(
                       day: day,
                       selected: order.selectedDays.contains(day.key),

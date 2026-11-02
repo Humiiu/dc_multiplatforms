@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../core/greetings.dart';
 import '../core/theme.dart';
 import '../models/user.dart';
+import '../providers/menu_provider.dart';
 import '../providers/user_provider.dart';
 import '../services/admin_whatsapp_service.dart';
 import 'demo_state.dart';
@@ -27,7 +28,8 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   Future<void> _onRefresh() async {
     ref.invalidate(currentUserProfileProvider);
-    // TODO(backend): refresh menu mingguan, status tagihan, dan profil user dari Firebase/API.
+    ref.invalidate(weeklyMenuProvider);
+    // TODO(backend): refresh status tagihan dari Firebase/API.
     await Future.delayed(const Duration(milliseconds: 700));
     if (mounted) {
       setState(() {
@@ -44,7 +46,9 @@ class _HomePageState extends ConsumerState<HomePage> {
     _menuTimer = Timer.periodic(const Duration(seconds: 4), (_) {
       if (!_menuController.hasClients) return;
       final currentPage = _menuController.page?.round() ?? 0;
-      final nextPage = (currentPage + 1) % _kMenus.length;
+      final menusCount = ref.read(homeMenuItemsProvider).length;
+      if (menusCount == 0) return;
+      final nextPage = (currentPage + 1) % menusCount;
       _menuController.animateToPage(
         nextPage,
         duration: const Duration(milliseconds: 450),
@@ -66,6 +70,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     final user = userAsync.value;
     final displayName = (user != null && user.name.isNotEmpty) ? user.name : 'Humiiu';
     final displayClass = user != null ? user.kelas.label : 'XII IPS 2';
+    final carouselMenus = ref.watch(homeMenuItemsProvider);
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -98,7 +103,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             const SizedBox(height: 14),
             _MenuCarousel(
               controller: _menuController,
-              menus: _kMenus,
+              menus: carouselMenus,
             ),
             const SizedBox(height: 32),
             _RequestCard(onTap: () => _showAdminSheet(context, displayName, displayClass)),
@@ -340,6 +345,7 @@ class HomeMenuItem {
   });
 }
 
+// ignore: unused_element
 const List<HomeMenuItem> _kMenus = [
   HomeMenuItem(
     dayLabel: 'Senin, 27 Okt',
