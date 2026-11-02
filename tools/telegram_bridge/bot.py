@@ -1,5 +1,7 @@
 import os
 import sys
+import re
+import html
 import json
 import time
 import logging
@@ -35,7 +37,8 @@ logger = logging.getLogger("TelegramDevBridge")
 
 # Base Directories
 CURRENT_DIR = Path(__file__).resolve().parent
-WORKSPACE_DIR = CURRENT_DIR.parent.parent
+DEFAULT_WORKSPACE_DIR = CURRENT_DIR.parent.parent
+STUDIO_PROJECTS_DIR = Path(r"C:\Users\jundi\StudioProjects")
 CONFIG_PATH = CURRENT_DIR / "config.json"
 AGY_EXE = r"C:\Users\jundi\.gemini\bin\agy.exe"
 
@@ -60,8 +63,16 @@ ALLOWED_USER_ID = int(CONFIG.get("allowed_user_id", 0))
 
 # Global tracking for active process and reset state
 ACTIVE_PROCESS = None
-ACTIVE_PROCESS_LOCK = asyncio.Lock()
 RESET_NEXT_SESSION = False
+
+def get_workspace_dir() -> Path:
+    config = load_config()
+    custom_ws = config.get("workspace_dir")
+    if custom_ws:
+        p = Path(custom_ws)
+        if p.exists() and p.is_dir():
+            return p
+    return DEFAULT_WORKSPACE_DIR
 
 def is_authorized(user_id: int) -> bool:
     return user_id == ALLOWED_USER_ID
@@ -72,38 +83,180 @@ async def check_auth(update: Update) -> bool:
         logger.warning(f"Unauthorized access attempt by user {user.id if user else 'Unknown'}")
         if update.effective_message:
             await update.effective_message.reply_text(
-                f"⛔ Akses Ditolak.\nID Akun Anda ({user.id if user else 'N/A'}) belum diizinkan mengontrol PC ini."
+                f"<b>Akses Ditolak.</b>\nID Akun Anda (<code>{user.id if user else 'N/A'}</code>) belum diizinkan mengontrol PC ini.",
+                parse_mode=ParseMode.HTML,
             )
         return False
     return True
-
-async def split_and_send(update: Update, text: str, parse_mode=None):
-    """Kirim pesan panjang dengan membaginya jika melebihi limit Telegram (4096 karakter)."""
-    max_len = 3900
-    if len(text) <= max_len:
-        try:
-            await update.effective_message.reply_text(text, parse_mode=parse_mode)
-        except Exception:
-            await update.effective_message.reply_text(text)
-        return
-
-    parts = [text[i:i + max_len] for i in range(0, len(text), max_len)]
-    for part in parts:
-        try:
-            await update.effective_message.reply_text(part, parse_mode=parse_mode)
-        except Exception:
-            await update.effective_message.reply_text(part)
 
 def get_rel_path(raw_path: str) -> str:
     if not raw_path:
         return ""
     try:
         p = Path(raw_path)
-        if p.is_relative_to(WORKSPACE_DIR):
-            return str(p.relative_to(WORKSPACE_DIR)).replace("\\", "/")
+        ws = get_workspace_dir()
+        if p.is_relative_to(ws):
+            return str(p.relative_to(ws)).replace("\\", "/")
         return p.name
     except Exception:
         return Path(raw_path).name
+
+def format_duration(seconds: int) -> str:
+    m, s = divmod(seconds, 60)
+    if m > 0:
+        return f"{m}m {s}s"
+    return f"{s}s"
+
+# ==================== TEXT FORMATTING & SPLITTING ====================
+
+def md_to_telegram_html(text: str) -> str:
+    """Konversi Markdown umum ke Telegram HTML yang valid dan bersih."""
+    # 1. Lindungi blok kode ```...```
+    code_blocks = []
+    def save_code_block(match):
+        code = match.group(1)
+        code_esc = code.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        code_blocks.append(f"<pre><code>{code_esc}</code></pre>")
+        return f"TOKEN_CODE_BLOCK_{len(code_blocks)-1}_TOKEN"
+    text = re.sub(r"```(?:\w+)?\n?(.*?)```", save_code_block, text, flags=re.DOTALL)
+
+    # 2. Lindungi inline code `...`
+    inline_codes = []
+    def save_inline_code(match):
+        code = match.group(1)
+        code_esc = code.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        inline_codes.append(f"<code>{code_esc}</code>")
+        return f"TOKEN_INLINE_CODE_{len(inline_codes)-1}_TOKEN"
+    text = re.sub(r"`([^`]+)`", save_inline_code, text)
+
+    # 3. Escape karakter HTML pada teks umum
+    text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+    # 4. Garis pembatas horizontal (---)
+    text = re.sub(r"(?m)^---+$", "----------------------------------------", text)
+
+    # 5. Header Markdown (### Header -> <b>HEADER</b>)
+    text = re.sub(r"(?m)^#{1,6}\s*(.+)$", r"<b>\1</b>", text)
+
+    # 6. Bold (**text** atau __text__)
+    text = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", text)
+    text = re.sub(r"__(.+?)__", r"<b>\1</b>", text)
+
+    # 7. Italic (*text* atau _text_) dengan penjaga boundary agar tidak merusak nama file (e.g. order_provider.dart)
+    text = re.sub(r"(?<!\w)\*([^*]+?)\*(?!\w)", r"<i>\1</i>", text)
+    text = re.sub(r"(?<!\w)_([^_]+?)_(?!\w)", r"<i>\1</i>", text)
+
+    # 8. Link [label](url): format link web, sederhanakan local file link
+    def format_link(m):
+        label, url = m.group(1), m.group(2)
+        if url.startswith(("http://", "https://", "tg://")):
+            return f'<a href="{url}">{label}</a>'
+        return f"<code>{label}</code>"
+    text = re.sub(r"\[(.+?)\]\((.+?)\)", format_link, text)
+
+    # 9. Bullet list formatting: ubah '- ' atau '* ' di awal baris menjadi '• '
+    text = re.sub(r"(?m)^[-*]\s+", "• ", text)
+
+    # 10. Kembalikan inline code dan blok kode yang dilindungi
+    for idx, block in enumerate(inline_codes):
+        text = text.replace(f"TOKEN_INLINE_CODE_{idx}_TOKEN", block)
+    for idx, block in enumerate(code_blocks):
+        text = text.replace(f"TOKEN_CODE_BLOCK_{idx}_TOKEN", block)
+
+    return text
+
+def split_markdown_into_chunks(text: str, max_chars: int = 3500) -> list[str]:
+    """Membagi teks panjang pada jeda baris agar tidak memotong tag kode atau struktur penting."""
+    if len(text) <= max_chars:
+        return [text]
+
+    lines = text.split("\n")
+    chunks = []
+    current_chunk = []
+    current_len = 0
+    in_code_block = False
+
+    for line in lines:
+        if line.strip().startswith("```"):
+            in_code_block = not in_code_block
+
+        # Jika satu baris sendiri melebihi batas (misal string data panjang)
+        if len(line) > max_chars:
+            if current_chunk:
+                chunks.append("\n".join(current_chunk))
+                current_chunk = []
+                current_len = 0
+            for i in range(0, len(line), max_chars):
+                chunks.append(line[i:i + max_chars])
+            continue
+
+        line_len = len(line) + 1
+        if current_len + line_len > max_chars and not in_code_block and current_chunk:
+            chunks.append("\n".join(current_chunk))
+            current_chunk = [line]
+            current_len = line_len
+        else:
+            current_chunk.append(line)
+            current_len += line_len
+
+    if current_chunk:
+        chunks.append("\n".join(current_chunk))
+
+    return chunks
+
+async def split_and_send(update: Update, text: str, parse_mode=ParseMode.HTML):
+    """Kirim pesan panjang dengan membaginya secara aman dan menerapkan formatting HTML."""
+    if not text.strip():
+        return
+
+    chunks = split_markdown_into_chunks(text, max_chars=3500)
+
+    for chunk in chunks:
+        if parse_mode == ParseMode.HTML:
+            html_text = md_to_telegram_html(chunk)
+            try:
+                await update.effective_message.reply_text(
+                    html_text,
+                    parse_mode=ParseMode.HTML,
+                    disable_web_page_preview=True,
+                )
+            except Exception as e:
+                logger.warning(f"Gagal mengirim pesan HTML: {e}. Mengirim fallback teks polos.")
+                # Hapus tag HTML jika terjadi kesalahan parsing Telegram
+                clean_plain = re.sub(r"<[^>]+>", "", html_text)
+                await update.effective_message.reply_text(clean_plain or chunk)
+        else:
+            try:
+                await update.effective_message.reply_text(chunk, parse_mode=parse_mode)
+            except Exception:
+                await update.effective_message.reply_text(chunk)
+
+# ==================== LIVE STATUS UI ====================
+
+def build_status_text(model_name: str, mode_label: str, elapsed_sec: int, current_action: str, recent_actions: list, modified_files: set) -> str:
+    dur_str = format_duration(elapsed_sec)
+    
+    text = f"<b>[Antigravity: {model_name}{mode_label}]</b>\n"
+    text += f"Durasi: <code>{dur_str}</code>\n"
+    text += "----------------------------------------\n"
+    text += f"<b>Status:</b> {html.escape(current_action)}\n\n"
+
+    if recent_actions:
+        text += "<b>Langkah Terakhir:</b>\n"
+        for act in recent_actions[-3:]:
+            text += f"• {html.escape(act)}\n"
+        text += "\n"
+
+    if modified_files:
+        text += f"<b>File Dimodifikasi ({len(modified_files)}):</b>\n"
+        for f in sorted(list(modified_files))[-5:]:
+            text += f"• <code>{html.escape(f)}</code>\n"
+        if len(modified_files) > 5:
+            text += f"• <i>...dan {len(modified_files) - 5} file lainnya</i>\n"
+        text += "\n"
+
+    text += "Ketik <code>/stop</code> untuk membatalkan proses."
+    return text
 
 # ==================== COMMAND HANDLERS ====================
 
@@ -113,32 +266,31 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     config = load_config()
     current_model = config.get("model", "gemini-3.8-flash-high")
+    ws = get_workspace_dir()
 
     msg = (
-        "🚀 *Antigravity Telegram IDE Bridge*\n\n"
-        "Antarmuka langsung ke mesin **Google Antigravity CLI** dengan pantauan progres *live* per langkah:\n\n"
-        f"🧠 *Model Aktif*: `{current_model}`\n\n"
-        "📌 *Perintah Developer & Kontrol:*\n"
-        "• 🛑 `/stop` atau `/cancel`\n"
-        "  └ Hentikan proses eksekusi Antigravity yang sedang berjalan seketika.\n\n"
-        "• 📸 `/ss` atau `/screenshot`\n"
-        "  └ Ambil tangkapan layar emulator Android aktif di PC.\n\n"
-        "• 🧠 `/model` atau `/model <nama>`\n"
-        "  └ Ganti model AI (Claude, GPT, Gemini Flash/Opus).\n\n"
-        "• 🔄 `/new`\n"
-        "  └ Reset percakapan untuk memulai topik baru dari awal.\n\n"
-        "• 🔍 `/analyze` & 🌿 `/git`\n"
-        "  └ Cek linter flutter analyze & status perubahan git.\n\n"
-        "⚡ *Slash Commands Antigravity:*\n"
-        "• `/goal <tugas>` : Eksekusi otonom menyeluruh sampai selesai.\n"
-        "• `/plan <tugas>` : Susun rencana aksi bertahap sebelum eksekusi.\n"
-        "• `/grill-me <topik>` : Diskusi kritis/interview arsitektur fitur.\n"
-        "• `/learn <pola>` : Simpan aturan/pembelajaran baru ke sistem.\n"
-        "• `/compact` : Ringkas riwayat percakapan.\n\n"
-        "💬 *Kirim Pesan Biasa*\n"
-        "└ Tanyakan apa saja atau instruksikan perbaikan kode secara langsung!\n"
+        "<b>Antigravity Telegram Bridge</b>\n\n"
+        f"<b>Model Aktif:</b> <code>{current_model}</code>\n"
+        f"<b>Workspace:</b> <code>{ws.name}</code> (<code>{ws}</code>)\n\n"
+        "<b>Perintah Kontrol:</b>\n"
+        "• <code>/stop</code> atau <code>/cancel</code> - Hentikan proses aktif seketika\n"
+        "• <code>/project</code> atau <code>/project &lt;nama&gt;</code> - Lihat / pindah workspace\n"
+        "• <code>/model</code> atau <code>/model &lt;nama&gt;</code> - Ganti model AI\n"
+        "• <code>/ss</code> atau <code>/screenshot</code> - Screenshot emulator Android aktif\n"
+        "• <code>/analyze</code> - Jalankan flutter analyze di PC\n"
+        "• <code>/git</code> - Cek status commit & perubahan git\n"
+        "• <code>/run &lt;perintah&gt;</code> - Jalankan perintah shell di PC\n"
+        "• <code>/new</code> - Reset percakapan untuk topik baru\n\n"
+        "<b>Mode Perintah Antigravity:</b>\n"
+        "• <code>/plan &lt;tugas&gt;</code> - Susun rencana aksi bertahap sebelum eksekusi\n"
+        "• <code>/goal &lt;tugas&gt;</code> - Eksekusi tugas tuntas secara mandiri\n"
+        "• <code>/grill-me &lt;topik&gt;</code> - Diskusi kritis arsitektur & wawancara fitur\n"
+        "• <code>/learn &lt;aturan&gt;</code> - Catat pembelajaran atau konvensi baru\n"
+        "• <code>/compact</code> - Ringkas riwayat percakapan\n\n"
+        "<b>Kirim Pesan Biasa:</b>\n"
+        "Ketik instruksi atau pertanyaan secara langsung untuk dikerjakan oleh Antigravity."
     )
-    await update.effective_message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
+    await update.effective_message.reply_text(msg, parse_mode=ParseMode.HTML)
 
 async def stop_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global ACTIVE_PROCESS
@@ -153,15 +305,13 @@ async def stop_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ACTIVE_PROCESS.kill()
             ACTIVE_PROCESS = None
             await update.effective_message.reply_text(
-                "🛑 *Proses Antigravity Berhasil Dihentikan!*",
-                parse_mode=ParseMode.MARKDOWN
+                "<b>Proses Antigravity Berhasil Dihentikan.</b>",
+                parse_mode=ParseMode.HTML,
             )
         except Exception as e:
-            await update.effective_message.reply_text(f"❌ Gagal menghentikan proses: {str(e)}")
+            await update.effective_message.reply_text(f"Gagal menghentikan proses: {html.escape(str(e))}")
     else:
-        await update.effective_message.reply_text(
-            "ℹ️ Tidak ada proses Antigravity yang sedang berjalan saat ini."
-        )
+        await update.effective_message.reply_text("Tidak ada proses Antigravity yang sedang berjalan saat ini.")
 
 async def screenshot_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_auth(update):
@@ -179,37 +329,37 @@ async def screenshot_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if proc.returncode != 0 or not proc.stdout:
             err = proc.stderr.decode("utf-8", errors="ignore")
             await update.effective_message.reply_text(
-                f"❌ Gagal mengambil tangkapan layar emulator:\n`{err or 'Device offline'}`\n\n"
-                "Pastikan emulator sudah berjalan di PC:\n`flutter emulators --launch Medium_Phone`",
-                parse_mode=ParseMode.MARKDOWN,
+                f"<b>Gagal mengambil tangkapan layar emulator:</b>\n<code>{html.escape(err or 'Device offline')}</code>\n\n"
+                "Pastikan emulator sudah berjalan di PC:\n<code>flutter emulators --launch Medium_Phone</code>",
+                parse_mode=ParseMode.HTML,
             )
             return
 
         waktu = datetime.now().strftime("%H:%M:%S WIB")
-        caption = f"📸 *Screenshot Emulator Android*\n🕒 {waktu}"
+        caption = f"<b>Screenshot Emulator Android</b>\nWaktu: <code>{waktu}</code>"
 
         await context.bot.send_photo(
             chat_id=update.effective_chat.id,
             photo=proc.stdout,
             caption=caption,
-            parse_mode=ParseMode.MARKDOWN,
+            parse_mode=ParseMode.HTML,
         )
     except subprocess.TimeoutExpired:
-        await update.effective_message.reply_text("⏱️ Timeout: ADB tidak merespons dalam 10 detik.")
+        await update.effective_message.reply_text("Timeout: ADB tidak merespons dalam 10 detik.")
     except Exception as e:
-        await update.effective_message.reply_text(f"❌ Error screenshot: {str(e)}")
+        await update.effective_message.reply_text(f"Error screenshot: {html.escape(str(e))}")
 
 async def analyze_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_auth(update):
         return
 
-    await update.effective_message.reply_text("⏳ Menjalankan `flutter analyze` di PC...")
+    await update.effective_message.reply_text("Menjalankan <code>flutter analyze</code> di PC...", parse_mode=ParseMode.HTML)
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
 
     try:
         proc = subprocess.run(
             ["flutter", "analyze"],
-            cwd=WORKSPACE_DIR,
+            cwd=get_workspace_dir(),
             capture_output=True,
             text=True,
             timeout=60,
@@ -219,38 +369,39 @@ async def analyze_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not out:
             out = "Tidak ada output dari flutter analyze."
 
-        reply = f"🔍 *Hasil Flutter Analyze:*\n```\n{out}\n```"
-        await split_and_send(update, reply, parse_mode=ParseMode.MARKDOWN)
+        reply = f"<b>Hasil Flutter Analyze:</b>\n<pre><code>{html.escape(out)}</code></pre>"
+        await split_and_send(update, reply, parse_mode=ParseMode.HTML)
     except subprocess.TimeoutExpired:
-        await update.effective_message.reply_text("⏱️ Timeout: `flutter analyze` memakan waktu lebih dari 60 detik.")
+        await update.effective_message.reply_text("Timeout: flutter analyze memakan waktu lebih dari 60 detik.")
     except Exception as e:
-        await update.effective_message.reply_text(f"❌ Error flutter analyze: {str(e)}")
+        await update.effective_message.reply_text(f"Error flutter analyze: {html.escape(str(e))}")
 
 async def git_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_auth(update):
         return
 
     try:
-        branch_proc = subprocess.run(["git", "branch", "--show-current"], cwd=WORKSPACE_DIR, capture_output=True, text=True)
+        ws = get_workspace_dir()
+        branch_proc = subprocess.run(["git", "branch", "--show-current"], cwd=ws, capture_output=True, text=True)
         branch = branch_proc.stdout.strip()
 
-        status_proc = subprocess.run(["git", "status", "-s"], cwd=WORKSPACE_DIR, capture_output=True, text=True)
+        status_proc = subprocess.run(["git", "status", "-s"], cwd=ws, capture_output=True, text=True)
         status = status_proc.stdout.strip()
         if not status:
             status = "Semua file bersih (tidak ada perubahan uncommitted)."
 
-        log_proc = subprocess.run(["git", "log", "-1", "--oneline"], cwd=WORKSPACE_DIR, capture_output=True, text=True)
+        log_proc = subprocess.run(["git", "log", "-1", "--oneline"], cwd=ws, capture_output=True, text=True)
         last_commit = log_proc.stdout.strip()
 
         reply = (
-            f"🌿 *Git Info*\n"
-            f"• *Branch*: `{branch}`\n"
-            f"• *Commit Terakhir*: `{last_commit}`\n\n"
-            f"📝 *Status Working Tree:*\n```\n{status}\n```"
+            f"<b>Git Info ({ws.name})</b>\n"
+            f"• <b>Branch:</b> <code>{branch}</code>\n"
+            f"• <b>Commit Terakhir:</b> <code>{last_commit}</code>\n\n"
+            f"<b>Status Working Tree:</b>\n<pre><code>{html.escape(status)}</code></pre>"
         )
-        await update.effective_message.reply_text(reply, parse_mode=ParseMode.MARKDOWN)
+        await update.effective_message.reply_text(reply, parse_mode=ParseMode.HTML)
     except Exception as e:
-        await update.effective_message.reply_text(f"❌ Error git: {str(e)}")
+        await update.effective_message.reply_text(f"Error git: {html.escape(str(e))}")
 
 async def run_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_auth(update):
@@ -258,19 +409,22 @@ async def run_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not context.args:
         await update.effective_message.reply_text(
-            "Format perintah salah.\nContoh: `/run git status` atau `/run dir`",
-            parse_mode=ParseMode.MARKDOWN,
+            "Format perintah salah.\nContoh: <code>/run git status</code> atau <code>/run dir</code>",
+            parse_mode=ParseMode.HTML,
         )
         return
 
     command_to_run = " ".join(context.args)
-    await update.effective_message.reply_text(f"⚡ Menjalankan: `{command_to_run}`...", parse_mode=ParseMode.MARKDOWN)
+    await update.effective_message.reply_text(
+        f"Menjalankan: <code>{html.escape(command_to_run)}</code>...",
+        parse_mode=ParseMode.HTML
+    )
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
 
     try:
         proc = subprocess.run(
             ["powershell", "-Command", command_to_run],
-            cwd=WORKSPACE_DIR,
+            cwd=get_workspace_dir(),
             capture_output=True,
             text=True,
             timeout=30,
@@ -279,12 +433,82 @@ async def run_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not out:
             out = "[Perintah selesai tanpa output]"
 
-        reply = f"💻 *Output ({command_to_run}):*\n```\n{out}\n```"
-        await split_and_send(update, reply, parse_mode=ParseMode.MARKDOWN)
+        reply = f"<b>Output ({html.escape(command_to_run)}):</b>\n<pre><code>{html.escape(out)}</code></pre>"
+        await split_and_send(update, reply, parse_mode=ParseMode.HTML)
     except subprocess.TimeoutExpired:
-        await update.effective_message.reply_text("⏱️ Timeout: Perintah melebihi batas 30 detik.")
+        await update.effective_message.reply_text("Timeout: Perintah melebihi batas 30 detik.")
     except Exception as e:
-        await update.effective_message.reply_text(f"❌ Gagal menjalankan perintah: {str(e)}")
+        await update.effective_message.reply_text(f"Gagal menjalankan perintah: {html.escape(str(e))}")
+
+async def project_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global RESET_NEXT_SESSION
+    if not await check_auth(update):
+        return
+
+    config = load_config()
+    current_ws = get_workspace_dir()
+
+    # List available projects in StudioProjects
+    if not context.args:
+        projects = []
+        if STUDIO_PROJECTS_DIR.exists():
+            for d in sorted(STUDIO_PROJECTS_DIR.iterdir()):
+                if d.is_dir():
+                    is_active = (d.resolve() == current_ws.resolve())
+                    tag = " <b>(Aktif)</b>" if is_active else ""
+                    projects.append(f"• <code>{d.name}</code>{tag}")
+
+        projects_list = "\n".join(projects) if projects else "<i>(Tidak ada folder ditemukan di StudioProjects)</i>"
+
+        reply = (
+            "<b>Manajemen Proyek Antigravity</b>\n\n"
+            f"<b>Proyek Aktif Saat Ini:</b>\n<code>{current_ws}</code>\n\n"
+            f"<b>Daftar Proyek di StudioProjects:</b>\n{projects_list}\n\n"
+            "<b>Cara Pindah Proyek:</b>\n"
+            "Ketik: <code>/project &lt;nama_folder&gt;</code>\n"
+            "Contoh:\n<code>/project deposito</code>\n\n"
+            "Atau gunakan path absolut di PC Anda:\n<code>/project D:\\Workspace\\proyek_baru</code>"
+        )
+        await update.effective_message.reply_text(reply, parse_mode=ParseMode.HTML)
+        return
+
+    target_input = " ".join(context.args).strip().strip('"').strip("'")
+    target_path = None
+
+    # Check if folder name exists inside StudioProjects
+    candidate = STUDIO_PROJECTS_DIR / target_input
+    if candidate.exists() and candidate.is_dir():
+        target_path = candidate
+    else:
+        # Check if direct absolute path
+        candidate_abs = Path(target_input)
+        if candidate_abs.exists() and candidate_abs.is_dir():
+            target_path = candidate_abs
+
+    if not target_path:
+        await update.effective_message.reply_text(
+            f"<b>Folder Proyek Tidak Ditemukan:</b>\n<code>{html.escape(target_input)}</code>\n\n"
+            f"Pastikan nama folder ada di <code>{STUDIO_PROJECTS_DIR}</code> atau gunakan path lengkap yang valid.",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    # Update config
+    config["workspace_dir"] = str(target_path.resolve())
+    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+        json.dump(config, f, indent=2)
+
+    # Reset Antigravity session so context is not mixed between projects
+    RESET_NEXT_SESSION = True
+
+    await update.effective_message.reply_text(
+        "<b>Berhasil Berpindah Proyek.</b>\n\n"
+        f"• <b>Nama Proyek:</b> <code>{target_path.name}</code>\n"
+        f"• <b>Lokasi:</b> <code>{target_path.resolve()}</code>\n\n"
+        "Sesi Antigravity di-reset agar bersih. "
+        "Semua perintah (/goal, /plan, /git, /analyze, chat) sekarang memproses proyek ini.",
+        parse_mode=ParseMode.HTML
+    )
 
 async def model_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_auth(update):
@@ -294,16 +518,16 @@ async def model_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     current_model = config.get("model", "gemini-3.8-flash-high")
 
     if not context.args:
-        model_list = "\n".join([f"• `{m}` {'*(Aktif)*' if m == current_model else ''}" for m in AVAILABLE_MODELS])
+        model_list = "\n".join([f"• <code>{m}</code> {'<b>(Aktif)</b>' if m == current_model else ''}" for m in AVAILABLE_MODELS])
         reply = (
-            f"🧠 *Pengaturan Model Antigravity*\n\n"
-            f"Model aktif saat ini: `{current_model}`\n\n"
-            f"📋 *Daftar Model yang Tersedia:*\n{model_list}\n\n"
-            f"💡 *Cara Ganti Model:*\n"
-            f"Ketik: `/model <nama_model>`\n"
-            f"Contoh:\n`/model claude-sonnet-4-6`\natau\n`/model gemini-3.8-flash-high`"
+            "<b>Pengaturan Model Antigravity</b>\n\n"
+            f"Model aktif saat ini: <code>{current_model}</code>\n\n"
+            f"<b>Daftar Model yang Tersedia:</b>\n{model_list}\n\n"
+            "<b>Cara Ganti Model:</b>\n"
+            "Ketik: <code>/model &lt;nama_model&gt;</code>\n"
+            "Contoh:\n<code>/model claude-sonnet-4-6</code>\natau\n<code>/model gemini-3.8-flash-high</code>"
         )
-        await update.effective_message.reply_text(reply, parse_mode=ParseMode.MARKDOWN)
+        await update.effective_message.reply_text(reply, parse_mode=ParseMode.HTML)
         return
 
     new_model = context.args[0].strip()
@@ -312,12 +536,12 @@ async def model_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         with open(CONFIG_PATH, "w", encoding="utf-8") as f:
             json.dump(config, f, indent=2)
         await update.effective_message.reply_text(
-            f"✅ *Model Antigravity Berhasil Diubah!* 🔄\n\nModel aktif sekarang: `{new_model}`\n"
-            f"Antigravity CLI akan menggunakan model ini untuk instruksi Anda selanjutnya.",
-            parse_mode=ParseMode.MARKDOWN
+            f"<b>Model Antigravity Berhasil Diubah.</b>\n\nModel aktif sekarang: <code>{new_model}</code>\n"
+            "Antigravity CLI akan menggunakan model ini untuk instruksi selanjutnya.",
+            parse_mode=ParseMode.HTML
         )
     except Exception as e:
-        await update.effective_message.reply_text(f"❌ Gagal menyimpan model baru: {str(e)}")
+        await update.effective_message.reply_text(f"Gagal menyimpan model baru: {html.escape(str(e))}")
 
 async def new_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global RESET_NEXT_SESSION
@@ -325,42 +549,11 @@ async def new_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     RESET_NEXT_SESSION = True
     await update.effective_message.reply_text(
-        "🔄 *Sesi Antigravity Direset!*\nPesan Anda berikutnya akan memulai percakapan baru dari awal.",
-        parse_mode=ParseMode.MARKDOWN
+        "<b>Sesi Antigravity Direset.</b>\nPesan Anda berikutnya akan memulai percakapan baru dari awal.",
+        parse_mode=ParseMode.HTML
     )
 
-# ==================== LIVE STREAMING & PROGRESS HANDLER ====================
-
-def format_duration(seconds: int) -> str:
-    m, s = divmod(seconds, 60)
-    if m > 0:
-        return f"{m}m {s}s"
-    return f"{s}s"
-
-def build_status_text(model_name: str, mode_label: str, elapsed_sec: int, current_action: str, recent_actions: list, modified_files: set) -> str:
-    dur_str = format_duration(elapsed_sec)
-    
-    text = f"🤖 *Antigravity ({model_name}){mode_label}*\n"
-    text += f"⏱️ *Durasi:* `{dur_str}`\n"
-    text += "─────────────────────────────\n"
-    text += f"⏳ *Sedang:* {current_action}\n\n"
-
-    if recent_actions:
-        text += "📋 *Langkah Terakhir:*\n"
-        for act in recent_actions[-3:]:
-            text += f"• {act}\n"
-        text += "\n"
-
-    if modified_files:
-        text += f"📁 *File Dimodifikasi ({len(modified_files)}):*\n"
-        for f in list(modified_files)[-5:]:
-            text += f"• `{f}`\n"
-        if len(modified_files) > 5:
-            text += f"• _...dan {len(modified_files) - 5} file lainnya_\n"
-        text += "\n"
-
-    text += "💡 *Ketik `/stop` untuk membatalkan proses kapan saja.*"
-    return text
+# ==================== MESSAGE & EXECUTION HANDLER ====================
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global ACTIVE_PROCESS, RESET_NEXT_SESSION
@@ -374,16 +567,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Check if a process is already actively running
     if ACTIVE_PROCESS and ACTIVE_PROCESS.poll() is None:
         await update.effective_message.reply_text(
-            "⚠️ *Antigravity sedang mengerjakan tugas sebelumnya!*\n\n"
-            "Tunggu tugas selesai atau ketik `/stop` untuk membatalkannya terlebih dahulu.",
-            parse_mode=ParseMode.MARKDOWN
+            "<b>Antigravity sedang mengerjakan tugas sebelumnya.</b>\n\n"
+            "Tunggu tugas selesai atau ketik <code>/stop</code> untuk membatalkannya terlebih dahulu.",
+            parse_mode=ParseMode.HTML
         )
         return
 
     if not Path(AGY_EXE).exists():
         await update.effective_message.reply_text(
-            f"❌ Executable Antigravity (`agy.exe`) tidak ditemukan di:\n`{AGY_EXE}`",
-            parse_mode=ParseMode.MARKDOWN,
+            f"Executable Antigravity (<code>agy.exe</code>) tidak ditemukan di:\n<code>{AGY_EXE}</code>",
+            parse_mode=ParseMode.HTML,
         )
         return
 
@@ -394,11 +587,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # /plan
     if user_text.lower() == "/plan":
         await update.effective_message.reply_text(
-            "📋 *Mode /plan Antigravity*\n\n"
+            "<b>Mode /plan Antigravity</b>\n\n"
             "Mode ini menyusun rencana aksi bertahap sebelum eksekusi kode.\n\n"
-            "💡 *Cara Penggunaan:*\n"
-            "Ketik `/plan <tugas>`\nContoh: `/plan buatkan alur pembayaran tagihan`",
-            parse_mode=ParseMode.MARKDOWN
+            "<b>Cara Penggunaan:</b>\n"
+            "Ketik: <code>/plan &lt;tugas&gt;</code>\nContoh: <code>/plan buatkan alur checkout tagihan</code>",
+            parse_mode=ParseMode.HTML
         )
         return
     elif user_text.lower().startswith("/plan "):
@@ -411,11 +604,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # /goal
     elif user_text.lower() == "/goal":
         await update.effective_message.reply_text(
-            "🎯 *Mode /goal Antigravity*\n\n"
+            "<b>Mode /goal Antigravity</b>\n\n"
             "Mode ini mengeksekusi instruksi secara otonom tuntas dari awal sampai akhir.\n\n"
-            "💡 *Cara Penggunaan:*\n"
-            "Ketik `/goal <tujuan>`\nContoh: `/goal selesaikan implementasi riwayat tagihan`",
-            parse_mode=ParseMode.MARKDOWN
+            "<b>Cara Penggunaan:</b>\n"
+            "Ketik: <code>/goal &lt;tujuan&gt;</code>\nContoh: <code>/goal selesaikan implementasi riwayat tagihan</code>",
+            parse_mode=ParseMode.HTML
         )
         return
     elif user_text.lower().startswith("/goal "):
@@ -452,9 +645,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Kirim initial live status message
     status_msg = await update.effective_message.reply_text(
-        f"🤖 *Antigravity ({model_name}){mode_label} sedang memulai...*\n"
-        "⏳ _Mempersiapkan tools & membaca konteks repositori..._",
-        parse_mode=ParseMode.MARKDOWN
+        f"<b>[Antigravity: {model_name}{mode_label}]</b>\n"
+        "Mempersiapkan tools & membaca konteks repositori...",
+        parse_mode=ParseMode.HTML
     )
 
     cmd = [
@@ -481,7 +674,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         proc = subprocess.Popen(
             cmd,
-            cwd=WORKSPACE_DIR,
+            cwd=get_workspace_dir(),
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -491,7 +684,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         ACTIVE_PROCESS = proc
     except Exception as e:
-        await status_msg.edit_text(f"❌ Gagal menjalankan Antigravity:\n`{str(e)}`")
+        await status_msg.edit_text(f"Gagal menjalankan Antigravity:\n<code>{html.escape(str(e))}</code>", parse_mode=ParseMode.HTML)
         return
 
     # Helper function to update status message gracefully
@@ -504,7 +697,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elapsed = int(now - start_time)
         text = build_status_text(model_name, mode_label, elapsed, current_action, recent_actions, modified_files)
         try:
-            await status_msg.edit_text(text, parse_mode=ParseMode.MARKDOWN)
+            await status_msg.edit_text(text, parse_mode=ParseMode.HTML)
         except Exception:
             pass
 
@@ -543,7 +736,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         if tn == "read_file":
                             raw_p = params.get("Path", "")
                             p = get_rel_path(raw_p)
-                            act = f"📖 Membaca `{p}`"
+                            act = f"Membaca {p}"
                             current_action = act
                             if state == "DONE" and act not in recent_actions:
                                 recent_actions.append(act)
@@ -553,33 +746,33 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             p = get_rel_path(raw_p)
                             if p:
                                 modified_files.add(p)
-                            act = f"✏️ Mengedit `{p}`"
+                            act = f"Mengedit {p}"
                             current_action = act
                             if state == "DONE" and act not in recent_actions:
                                 recent_actions.append(act)
 
                         elif tn == "run_command":
                             summary = params.get("toolSummary") or params.get("CommandLine", "")[:40]
-                            act = f"⚡ Menjalankan `{summary}`"
+                            act = f"Menjalankan {summary}"
                             current_action = act
                             if state == "DONE" and act not in recent_actions:
                                 recent_actions.append(act)
 
                         elif tn == "search_files":
                             q = params.get("query", "")
-                            act = f"🔍 Mencari `{q}`"
+                            act = f"Mencari {q}"
                             current_action = act
                             if state == "DONE" and act not in recent_actions:
                                 recent_actions.append(act)
 
                         else:
-                            act = f"⚙️ Tool `{tn}`"
+                            act = f"Tool {tn}"
                             current_action = act
                             if state == "DONE" and act not in recent_actions:
                                 recent_actions.append(act)
 
                     elif st == "agent_response":
-                        current_action = "🤔 Menganalisis & merumuskan kode..."
+                        current_action = "Menganalisis & menyusun perbaikan..."
 
                     await update_status_ui()
 
@@ -595,14 +788,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Cek jika proses dihentikan oleh user via /stop
         if proc.returncode != 0 and ACTIVE_PROCESS is None:
-            # Stopped intentionally
             return
 
         # Check git modified files to make sure nothing was missed
         try:
             git_diff_proc = subprocess.run(
                 ["git", "status", "-s"],
-                cwd=WORKSPACE_DIR,
+                cwd=get_workspace_dir(),
                 capture_output=True,
                 text=True,
             )
@@ -615,26 +807,26 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Update final status message
         await status_msg.edit_text(
-            f"✅ *Antigravity Telah Selesai!* (Total Waktu: `{format_duration(total_duration)}`)",
-            parse_mode=ParseMode.MARKDOWN
+            f"<b>[Antigravity Selesai]</b> Total waktu: <code>{format_duration(total_duration)}</code>",
+            parse_mode=ParseMode.HTML
         )
 
         # Prepare summary of modified files
         summary_section = ""
         if modified_files:
-            summary_section = "\n\n─────────────────────────────\n📁 *File & Folder yang Telah Dimodifikasi:*\n"
+            summary_section = "\n\n----------------------------------------\n<b>File Dimodifikasi:</b>\n"
             for f in sorted(modified_files):
-                summary_section += f"• `{f}`\n"
+                summary_section += f"• <code>{f}</code>\n"
 
         if not final_response.strip():
             final_response = "Tugas telah selesai dieksekusi oleh Antigravity."
 
         full_output = f"{final_response.strip()}{summary_section}"
-        await split_and_send(update, full_output)
+        await split_and_send(update, full_output, parse_mode=ParseMode.HTML)
 
     except Exception as e:
         logger.error(f"Error in stream processing: {e}", exc_info=True)
-        await status_msg.edit_text(f"❌ Terjadi kesalahan saat memproses streaming:\n`{str(e)}`")
+        await status_msg.edit_text(f"Terjadi kesalahan saat memproses streaming:\n<code>{html.escape(str(e))}</code>", parse_mode=ParseMode.HTML)
     finally:
         ACTIVE_PROCESS = None
 
@@ -644,10 +836,10 @@ def main():
         sys.exit(1)
 
     print("=" * 50)
-    print("🚀 DIAN CATERING ANTIGRAVITY TELEGRAM IDE BRIDGE")
-    print(f"👤 Whitelist User ID : {ALLOWED_USER_ID}")
-    print(f"📂 Workspace Root   : {WORKSPACE_DIR}")
-    print(f"🛠️ Antigravity Core  : {AGY_EXE}")
+    print("DIAN CATERING ANTIGRAVITY TELEGRAM IDE BRIDGE")
+    print(f"Whitelist User ID : {ALLOWED_USER_ID}")
+    print(f"Workspace Root   : {get_workspace_dir()}")
+    print(f"Antigravity Core  : {AGY_EXE}")
     print("=" * 50)
     print("Bot sedang berjalan... Tekan Ctrl+C untuk berhenti.")
 
@@ -656,6 +848,7 @@ def main():
     # Commands
     app.add_handler(CommandHandler(["start", "help"], start_cmd))
     app.add_handler(CommandHandler(["stop", "cancel"], stop_cmd))
+    app.add_handler(CommandHandler(["project", "cd"], project_cmd))
     app.add_handler(CommandHandler(["ss", "screenshot"], screenshot_cmd))
     app.add_handler(CommandHandler("analyze", analyze_cmd))
     app.add_handler(CommandHandler("git", git_cmd))
