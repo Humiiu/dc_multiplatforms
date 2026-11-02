@@ -2,14 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../core/theme.dart';
+import '../models/user.dart';
+import '../providers/order_provider.dart';
+import '../providers/user_provider.dart';
+import '../services/admin_whatsapp_service.dart';
 import 'demo_state.dart';
 import 'shared_widgets.dart';
 
-class CheckoutPage extends ConsumerWidget {
+class CheckoutPage extends ConsumerStatefulWidget {
   const CheckoutPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CheckoutPage> createState() => _CheckoutPageState();
+}
+
+class _CheckoutPageState extends ConsumerState<CheckoutPage> {
+  bool _isSubmitting = false;
+
+  @override
+  Widget build(BuildContext context) {
     final order = ref.watch(demoOrderProvider);
     return Scaffold(
       body: SafeArea(
@@ -144,23 +155,59 @@ class CheckoutPage extends ConsumerWidget {
                   DemoPrimaryButton(
                     label: 'Pay Now',
                     icon: Icons.lock,
-                    onPressed: order.total == 0
+                    isLoading: _isSubmitting,
+                    onPressed: (order.total == 0 || _isSubmitting)
                         ? null
-                        : () {
-                            final wasDebtPayment = order.payingExistingDebt;
-                            ref
-                                .read(demoOrderProvider.notifier)
-                                .addDemoOrder();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  wasDebtPayment
-                                      ? 'Simulasi pelunasan selesai. Tidak ada pembayaran nyata.'
-                                      : 'Pesanan demo dicatat. Pembayaran belum diproses.',
+                        : () async {
+                            setState(() => _isSubmitting = true);
+                            try {
+                              final wasDebtPayment = order.payingExistingDebt;
+                              final isPayLater = order.paymentMethod == DemoPaymentMethod.payLater;
+                              await ref.read(orderServiceProvider).submitCurrentOrder();
+                              if (!context.mounted) return;
+
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    wasDebtPayment
+                                        ? 'Pelunasan tagihan berhasil dicatat!'
+                                        : (isPayLater
+                                            ? 'Pesanan Pay Later dicatat. Silakan konfirmasi WhatsApp ke Admin.'
+                                            : 'Pesanan katering berhasil dicatat!'),
+                                  ),
+                                  action: isPayLater
+                                      ? SnackBarAction(
+                                          label: 'Chat Admin',
+                                          textColor: Colors.amberAccent,
+                                          onPressed: () {
+                                            final profile = ref.read(currentUserProfileProvider).value;
+                                            AdminWhatsappService.open(
+                                              purpose: AdminWhatsappPurpose.debtPayment,
+                                              name: profile?.name ?? 'Siswa',
+                                              kelas: profile?.kelas.label ?? 'Siswa',
+                                              total: order.total,
+                                            );
+                                          },
+                                        )
+                                      : null,
                                 ),
-                              ),
-                            );
-                            context.go('/history');
+                              );
+                              context.go('/history');
+                            } catch (e) {
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  backgroundColor: AppColors.error,
+                                  content: Text(
+                                    e.toString().replaceAll('Exception: ', ''),
+                                  ),
+                                ),
+                              );
+                            } finally {
+                              if (mounted) {
+                                setState(() => _isSubmitting = false);
+                              }
+                            }
                           },
                   ),
                 ],

@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// The Riverpod provider exposing the [DemoOrderNotifier].
-/// We use the modern NotifierProvider (Riverpod 3.x) instead of the older
+/// We use the modern NotifierProvider (Riverpod 3.x) instead of the older
 /// ChangeNotifierProvider. The state is immutable: every mutation replaces it
 /// with a new [DemoOrderState] instance so listeners are notified.
 final demoOrderProvider =
@@ -140,7 +140,7 @@ class DemoHistoryOrder {
 }
 
 class DemoOrderState {
-  // TODO(backend): replace mock order state with Firebase Realtime Database records.
+  // State form pemilihan pesanan lokal & fallback offline demo
   final Set<String> _selectedDays;
   final DemoPaymentMethod _paymentMethod;
   final int? _debtPaymentTotal;

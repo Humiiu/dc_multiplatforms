@@ -33,7 +33,8 @@ class AdminWhatsappService {
     );
   }
 
-  static Future<void> open({
+  /// Membuka tautan WhatsApp Admin dengan fallback penanganan error gracefully
+  static Future<bool> open({
     required AdminWhatsappPurpose purpose,
     String name = 'Humiiu',
     String kelas = 'XII IPS 2',
@@ -50,9 +51,13 @@ class AdminWhatsappService {
       details: details,
     );
 
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      // TODO(backend): replace with in-app snackbar or fallback channel when backend is ready.
-      throw Exception('Could not launch WhatsApp admin link');
+    try {
+      if (await canLaunchUrl(uri)) {
+        return await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+      return false;
+    } catch (_) {
+      return false;
     }
   }
 
