@@ -10,9 +10,9 @@ Dokumen ini mencatat seluruh perkembangan implementasi backend aplikasi Dian Cat
 - **Fitur 1: Autentikasi & Registrasi Akun**: Selesai. Form Login & Register di `lib/ui/auth_page.dart` sudah terhubung ke `AuthService` dan `DatabaseService` dengan validasi lengkap, email masking virtual, loading state, dan unit testing.
 - **Fitur 2: Profil Siswa**: Selesai. Data nama, kelas, jurusan, dan nomor telepon ditampilkan dinamis di `ProfilePage` dan sapaan `HomePage` melalui `currentUserProfileProvider`. Dialog edit profil nama, ubah password akun, integrasi WhatsApp admin dinamis, serta tombol Logout telah aktif.
 - **Fitur 3: Menu Mingguan Dinamis**: Selesai. Data menu harian dimuat dinamis dari Firebase RTDB node `/menus` via `weeklyMenuProvider`, dengan fallback otomatis ke menu mingguan default jika data belum diisi atau offline. Carousel `HomePage` dan kartu pemilihan hari di `OrderPage` sudah tersambung penuh.
-- **Fitur 4: Pemesanan & Alur Order**: Belum dimulai.
-- **Fitur 5: Tagihan & Pay Later (Ngutang)**: Belum dimulai.
-- **Fitur 6: Riwayat (History)**: Belum dimulai.
+- **Fitur 4: Pemesanan & Alur Order**: Selesai. Logika `OrderValidator` dibuat (harga flat Rp 20.000/box, cut-off malam 21:30 WIB), model `Order` diperbarui, `OrderProvider` terhubung ke RTDB via `createOrder()`, dan unit testing di `test/order_validator_test.dart` lulus 100%.
+- **Fitur 5: Tagihan & Pay Later (Ngutang)**: Selesai. Proteksi plafon hutang maksimal Rp 100.000 diterapkan di `OrderValidator.canUsePayLater()`, stream saldo hutang real-time di `userDebtStreamProvider`, dan tampilan kartu `_DebtCard` di `HomePage` tersambung dinamis.
+- **Fitur 6: Riwayat (History)**: Sedang berjalan. `userOrdersStreamProvider` sudah disiapkan untuk memuat riwayat order real dari node `/orders/$uid`.
 
 ---
 
