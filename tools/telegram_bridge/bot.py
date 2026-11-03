@@ -387,7 +387,7 @@ def prepare_conversation_for_cli(cid: str) -> bool:
 
 # ==================== LIVE STATUS UI ====================
 
-def build_status_text(model_name: str, mode_label: str, elapsed_sec: int, current_action: str, recent_actions: list, modified_files: set, session_title: str = "") -> str:
+def build_status_text(model_name: str, mode_label: str, elapsed_sec: int, current_action: str, action_history: list, modified_files: set, session_title: str = "") -> str:
     dur_str = format_duration(elapsed_sec)
     
     text = f"<b>[Antigravity: {model_name}{mode_label}]</b>\n"
@@ -395,13 +395,19 @@ def build_status_text(model_name: str, mode_label: str, elapsed_sec: int, curren
         text += f"Sesi: <i>{html.escape(session_title)}</i>\n"
     text += f"Durasi: <code>{dur_str}</code>\n"
     text += "----------------------------------------\n"
-    text += f"<b>Status:</b> {html.escape(current_action)}\n\n"
+    text += "<b>Aktivitas Langsung:</b>\n"
 
-    if recent_actions:
-        text += "<b>Langkah Terakhir:</b>\n"
-        for act in recent_actions[-3:]:
-            text += f"• {html.escape(act)}\n"
-        text += "\n"
+    max_history = 6
+    if len(action_history) > max_history:
+        hidden = len(action_history) - max_history
+        text += f"• <i>... ({hidden} langkah sebelumnya)</i>\n"
+        for act in action_history[-max_history:]:
+            text += f"• {act}\n"
+    elif action_history:
+        for act in action_history:
+            text += f"• {act}\n"
+
+    text += f"• <b>{current_action}</b>\n\n"
 
     if modified_files:
         text += f"<b>File Dimodifikasi ({len(modified_files)}):</b>\n"
@@ -999,9 +1005,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         save_config(config)
 
     modified_files = set()
-    recent_actions = []
-    current_action = "Menganalisis permintaan..."
+    action_history = []
+    current_action = "Mempersiapkan tools & membaca repositori..."
     start_time = time.time()
+    thinking_start = time.time()
     last_ui_update = 0
     final_response = ""
 
@@ -1030,7 +1037,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         last_ui_update = now
         elapsed = int(now - start_time)
-        text = build_status_text(model_name, mode_label, elapsed, current_action, recent_actions, modified_files, session_title)
+        text = build_status_text(model_name, mode_label, elapsed, current_action, action_history, modified_files, session_title)
         try:
             await status_msg.edit_text(text, parse_mode=ParseMode.HTML)
         except Exception:
@@ -1076,49 +1083,48 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     state = su.get("state")
                     tn = su.get("tool_name")
                     ti = su.get("tool_info", {})
-                    params = ti.get("parameters", {})
+                    params = ti.get("parameters", {}) if ti else {}
 
                     if st == "tool":
                         if tn == "read_file":
                             raw_p = params.get("Path", "")
                             p = get_rel_path(raw_p)
-                            act = f"Membaca {p}"
-                            current_action = act
-                            if state == "DONE" and act not in recent_actions:
-                                recent_actions.append(act)
-
-                        elif tn in ["edit_file", "write_file"]:
+                            act = f"Membaca <code>{html.escape(p)}</code>"
+                        elif tn == "write_file":
                             raw_p = params.get("Path", "")
                             p = get_rel_path(raw_p)
                             if p:
                                 modified_files.add(p)
-                            act = f"Mengedit {p}"
-                            current_action = act
-                            if state == "DONE" and act not in recent_actions:
-                                recent_actions.append(act)
-
+                            act = f"Membuat <code>{html.escape(p)}</code>"
+                        elif tn == "edit_file":
+                            raw_p = params.get("Path", "")
+                            p = get_rel_path(raw_p)
+                            if p:
+                                modified_files.add(p)
+                            act = f"Mengedit <code>{html.escape(p)}</code>"
                         elif tn == "run_command":
-                            summary = params.get("toolSummary") or params.get("CommandLine", "")[:40]
-                            act = f"Menjalankan {summary}"
-                            current_action = act
-                            if state == "DONE" and act not in recent_actions:
-                                recent_actions.append(act)
-
+                            summary = params.get("toolSummary") or params.get("CommandLine", "")[:35]
+                            act = f"Menjalankan <code>{html.escape(summary)}</code>"
                         elif tn == "search_files":
                             q = params.get("query", "")
-                            act = f"Mencari {q}"
-                            current_action = act
-                            if state == "DONE" and act not in recent_actions:
-                                recent_actions.append(act)
-
+                            act = f"Mencari <code>{html.escape(q)}</code>"
                         else:
-                            act = f"Tool {tn}"
-                            current_action = act
-                            if state == "DONE" and act not in recent_actions:
-                                recent_actions.append(act)
+                            act = f"Tool <code>{html.escape(tn or '')}</code>"
+
+                        if state == "ACTIVE":
+                            current_action = f"Sedang {act.lower()}..."
+                        elif state == "DONE":
+                            if act not in action_history:
+                                action_history.append(act)
+                            thinking_start = time.time()
+                            current_action = "Sedang berpikir..."
 
                     elif st == "agent_response":
-                        current_action = "Menganalisis & menyusun perbaikan..."
+                        think_sec = int(time.time() - thinking_start)
+                        if think_sec > 0:
+                            current_action = f"Sedang berpikir ({think_sec}s)..."
+                        else:
+                            current_action = "Sedang berpikir..."
 
                     await update_status_ui()
 
