@@ -119,7 +119,7 @@ def format_duration(seconds: int) -> str:
         return f"{m}m {s}s"
     return f"{s}s"
 
-# ==================== TEXT FORMATTING & SPLITTING ====================
+# ==================== TEXT FORMATTING & SENDING ====================
 
 def md_to_telegram_html(text: str) -> str:
     """Konversi Markdown umum ke Telegram HTML yang valid dan bersih."""
@@ -164,8 +164,8 @@ def md_to_telegram_html(text: str) -> str:
 
     return text
 
-def split_markdown_into_chunks(text: str, max_chars: int = 3500) -> list[str]:
-    """Membagi teks panjang pada jeda baris agar tidak memotong tag kode atau struktur penting."""
+def split_text_into_chunks(text: str, max_chars: int = 3500) -> list[str]:
+    """Membagi teks panjang pada jeda baris tanpa memotong blok teks penting."""
     if len(text) <= max_chars:
         return [text]
 
@@ -202,36 +202,66 @@ def split_markdown_into_chunks(text: str, max_chars: int = 3500) -> list[str]:
 
     return chunks
 
-async def split_and_send(update: Update, text: str, parse_mode=ParseMode.HTML):
-    """Kirim pesan panjang dengan membaginya secara aman dan menerapkan formatting HTML."""
-    if not text.strip():
+async def send_html_message(update: Update, html_text: str):
+    """Kirim teks yang sudah berupa HTML Telegram yang valid secara langsung."""
+    if not html_text.strip():
         return
 
-    chunks = split_markdown_into_chunks(text, max_chars=3500)
-
+    chunks = split_text_into_chunks(html_text, max_chars=3500)
     for chunk in chunks:
-        if parse_mode == ParseMode.HTML:
-            html_text = md_to_telegram_html(chunk)
-            try:
-                await update.effective_message.reply_text(
-                    html_text,
-                    parse_mode=ParseMode.HTML,
-                    disable_web_page_preview=True,
-                )
-            except Exception as e:
-                logger.warning(f"Gagal mengirim pesan HTML: {e}. Mengirim fallback teks polos.")
-                clean_plain = re.sub(r"<[^>]+>", "", html_text)
-                await update.effective_message.reply_text(clean_plain or chunk)
-        else:
-            try:
-                await update.effective_message.reply_text(chunk, parse_mode=parse_mode)
-            except Exception:
-                await update.effective_message.reply_text(chunk)
+        try:
+            await update.effective_message.reply_text(
+                chunk,
+                parse_mode=ParseMode.HTML,
+                disable_web_page_preview=True,
+            )
+        except Exception as e:
+            logger.warning(f"Gagal mengirim pesan HTML: {e}. Mengirim fallback teks polos.")
+            clean_plain = re.sub(r"<[^>]+>", "", chunk)
+            await update.effective_message.reply_text(clean_plain or chunk)
+
+async def send_markdown_message(update: Update, md_text: str):
+    """Kirim teks Markdown dari Antigravity dengan mengonversinya terlebih dahulu ke HTML Telegram."""
+    if not md_text.strip():
+        return
+
+    chunks = split_text_into_chunks(md_text, max_chars=3500)
+    for chunk in chunks:
+        html_chunk = md_to_telegram_html(chunk)
+        try:
+            await update.effective_message.reply_text(
+                html_chunk,
+                parse_mode=ParseMode.HTML,
+                disable_web_page_preview=True,
+            )
+        except Exception as e:
+            logger.warning(f"Gagal mengirim pesan Markdown->HTML: {e}. Mengirim fallback teks polos.")
+            clean_plain = re.sub(r"<[^>]+>", "", html_chunk)
+            await update.effective_message.reply_text(clean_plain or chunk)
 
 # ==================== SESSION MANAGEMENT ====================
 
-def get_recent_conversations(limit: int = 8) -> list[dict]:
-    """Mengambil daftar riwayat sesi percakapan dari SQLite database Antigravity."""
+def get_first_user_prompt(cid: str) -> str:
+    """Mengambil pesan/prompt pertama yang sebenarnya dikirim pengguna dari transcript log."""
+    for base_brain in [CLI_BRAIN_DIR, IDE_BRAIN_DIR]:
+        t_path = base_brain / cid / ".system_generated" / "logs" / "transcript.jsonl"
+        if t_path.exists():
+            try:
+                with open(t_path, "r", encoding="utf-8", errors="ignore") as f:
+                    line = f.readline()
+                    if line:
+                        data = json.loads(line)
+                        raw = data.get("content", "")
+                        m = re.search(r"<USER_REQUEST>(.*?)</USER_REQUEST>", raw, re.DOTALL)
+                        if m:
+                            return m.group(1).strip().replace("\n", " ")
+                        return raw.strip().replace("\n", " ")
+            except Exception:
+                pass
+    return ""
+
+def get_recent_conversations(limit: int = 7) -> list[dict]:
+    """Mengambil riwayat sesi percakapan dari SQLite database Antigravity."""
     if not CONVERSATION_DB_PATH.exists():
         return []
     try:
@@ -250,7 +280,7 @@ def get_recent_conversations(limit: int = 8) -> list[dict]:
         results = []
         for r in rows:
             cid, title, preview, last_mod, ws, app_data = r
-            ws_name = ""
+            ws_name = "Umum"
             ws_path = ""
             if ws:
                 try:
@@ -263,10 +293,14 @@ def get_recent_conversations(limit: int = 8) -> list[dict]:
                 except Exception:
                     pass
 
+            first_prompt = get_first_user_prompt(cid)
+            if not first_prompt:
+                first_prompt = preview or ""
+
             results.append({
                 "id": cid,
                 "title": title or "Percakapan Baru",
-                "preview": (preview or "").replace("\n", " ").strip()[:65],
+                "first_prompt": first_prompt.replace("\n", " ").strip(),
                 "time": last_mod[:16] if last_mod else "",
                 "workspace": ws_name,
                 "workspace_path": ws_path,
@@ -296,7 +330,7 @@ def get_conversation_by_id_or_prefix(query: str) -> dict | None:
         if not r:
             return None
         cid, title, preview, last_mod, ws, app_data = r
-        ws_name = ""
+        ws_name = "Umum"
         ws_path = ""
         if ws:
             try:
@@ -307,10 +341,15 @@ def get_conversation_by_id_or_prefix(query: str) -> dict | None:
                     ws_name = Path(clean_path).name
             except Exception:
                 pass
+
+        first_prompt = get_first_user_prompt(cid)
+        if not first_prompt:
+            first_prompt = preview or ""
+
         return {
             "id": cid,
             "title": title or "Percakapan Baru",
-            "preview": (preview or "").replace("\n", " ").strip()[:65],
+            "first_prompt": first_prompt.replace("\n", " ").strip(),
             "time": last_mod[:16] if last_mod else "",
             "workspace": ws_name,
             "workspace_path": ws_path,
@@ -401,7 +440,7 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"<b>Sesi Aktif:</b> {active_session_info}\n\n"
         "<b>Perintah Sesi & Percakapan:</b>\n"
         "• <code>/session</code> atau <code>/sessions</code> - Lihat & pilih riwayat sesi percakapan\n"
-        "• <code>/session &lt;nomor&gt;</code> - Lanjutkan sesi tertentu (contoh: <code>/session 2</code>)\n"
+        "• <code>/session &lt;nomor&gt;</code> - Lanjutkan sesi tertentu (contoh: <code>/session 1</code>)\n"
         "• <code>/new</code> - Reset percakapan untuk memulai sesi baru\n\n"
         "<b>Perintah Kontrol:</b>\n"
         "• <code>/stop</code> atau <code>/cancel</code> - Hentikan proses aktif seketika\n"
@@ -420,7 +459,7 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "<b>Kirim Pesan Biasa:</b>\n"
         "Ketik instruksi atau pertanyaan secara langsung untuk dikerjakan oleh Antigravity."
     )
-    await update.effective_message.reply_text(msg, parse_mode=ParseMode.HTML)
+    await send_html_message(update, msg)
 
 async def session_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler untuk melihat, memilih, dan melanjutkan sesi percakapan Antigravity."""
@@ -430,9 +469,9 @@ async def session_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     config = load_config()
     active_cid = config.get("active_conversation_id", "").strip()
-    recent = get_recent_conversations(8)
+    recent = get_recent_conversations(7)
 
-    # 1. Tanpa argumen: Tampilkan daftar sesi terakhir
+    # 1. Tanpa argumen: Tampilkan daftar sesi terakhir dengan layout rapi & terstruktur
     if not context.args:
         active_label = "<i>(Belum ada sesi spesifik - otomatis melanjutkan sesi terbaru)</i>"
         if active_cid:
@@ -445,31 +484,40 @@ async def session_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         lines = [
             "<b>Daftar Sesi Percakapan Antigravity</b>\n",
             f"<b>Sesi Aktif Saat Ini:</b>\n{active_label}\n",
-            "<b>Riwayat Sesi Terakhir:</b>",
+            "----------------------------------------\n"
         ]
 
         if not recent:
-            lines.append("<i>(Belum ada riwayat sesi yang tercatat)</i>")
+            lines.append("<i>(Belum ada riwayat sesi yang tercatat di database)</i>")
         else:
             for i, s in enumerate(recent, 1):
                 is_active = (s["id"] == active_cid)
                 tag = " <b>[AKTIF]</b>" if is_active else ""
-                ws_info = f" • Proyek: <code>{html.escape(s['workspace'])}</code>" if s["workspace"] else ""
-                time_info = f" • {html.escape(s['time'])}" if s["time"] else ""
-                prev = f"\n   <i>Preview: {html.escape(s['preview'])}...</i>" if s["preview"] else ""
-                lines.append(
-                    f"<b>[{i}]</b> <b>{html.escape(s['title'])}</b>{tag}\n"
-                    f"   ID: <code>{s['id'][:8]}...</code>{ws_info}{time_info}{prev}\n"
+                
+                # Preview prompt pertama user
+                fp = s["first_prompt"]
+                if len(fp) > 95:
+                    fp = fp[:95] + "..."
+                if not fp:
+                    fp = "(Tidak ada pesan awal tercatat)"
+
+                session_card = (
+                    f"<b>[{i}] {html.escape(s['title'])}</b>{tag}\n"
+                    f"• Proyek: <code>{html.escape(s['workspace'])}</code> • <code>{html.escape(s['time'])}</code>\n"
+                    f"• Pesan Awal:\n"
+                    f"  <i>\"{html.escape(fp)}\"</i>\n"
+                    f"• Lanjutkan: <code>/session {i}</code>\n"
                 )
+                lines.append(session_card)
 
         lines.append(
             "----------------------------------------\n"
-            "<b>Cara Melanjutkan Sesi:</b>\n"
-            "• Ketik nomor: <code>/session &lt;nomor&gt;</code> (contoh: <code>/session 1</code>)\n"
-            "• Atau ketik ID: <code>/session &lt;id&gt;</code> (contoh: <code>/session 13fa4e39</code>)\n"
-            "• Buat sesi baru: <code>/session new</code> atau <code>/new</code>"
+            "<b>Cara Memilih Sesi:</b>\n"
+            "• Ketuk atau ketik: <code>/session 1</code>, <code>/session 2</code>, dst.\n"
+            "• Atau ketik ID: <code>/session &lt;id&gt;</code>\n"
+            "• Mulai percakapan baru: <code>/session new</code> atau <code>/new</code>"
         )
-        await split_and_send(update, "\n".join(lines), parse_mode=ParseMode.HTML)
+        await send_html_message(update, "\n".join(lines))
         return
 
     sub_arg = context.args[0].strip()
@@ -479,25 +527,25 @@ async def session_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         RESET_NEXT_SESSION = True
         config["active_conversation_id"] = ""
         save_config(config)
-        await update.effective_message.reply_text(
-            "<b>Sesi Antigravity Direset.</b>\nPesan Anda berikutnya akan otomatis memulai percakapan baru dari awal.",
-            parse_mode=ParseMode.HTML
+        await send_html_message(
+            update,
+            "<b>Sesi Antigravity Direset.</b>\nPesan Anda berikutnya akan otomatis memulai percakapan baru dari awal."
         )
         return
 
     # 3. Info sesi aktif saat ini
     if sub_arg.lower() in ["info", "current"]:
         if not active_cid:
-            await update.effective_message.reply_text(
-                "Tidak ada sesi spesifik yang di-pin saat ini. Bot secara default melanjutkan sesi terbaru.",
-                parse_mode=ParseMode.HTML
+            await send_html_message(
+                update,
+                "Tidak ada sesi spesifik yang di-pin saat ini. Bot secara default melanjutkan sesi terbaru."
             )
             return
         cur = get_conversation_by_id_or_prefix(active_cid)
         if not cur:
-            await update.effective_message.reply_text(
-                f"Sesi aktif memiliki ID <code>{active_cid}</code> tetapi ringkasannya belum ditemukan di database.",
-                parse_mode=ParseMode.HTML
+            await send_html_message(
+                update,
+                f"Sesi aktif memiliki ID <code>{active_cid}</code> tetapi ringkasannya belum ditemukan di database."
             )
             return
 
@@ -506,10 +554,10 @@ async def session_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"• <b>Judul:</b> {html.escape(cur['title'])}\n"
             f"• <b>ID:</b> <code>{cur['id']}</code>\n"
             f"• <b>Proyek:</b> <code>{cur['workspace'] or 'Umum'}</code>\n"
-            f"• <b>Waktu Terakhir:</b> <code>{cur['time']}</code>\n"
-            f"• <b>Preview:</b> <i>{html.escape(cur['preview'])}</i>"
+            f"• <b>Waktu Terakhir:</b> <code>{cur['time']}</code>\n\n"
+            f"<b>Pesan Awal:</b>\n<i>\"{html.escape(cur['first_prompt'])}\"</i>"
         )
-        await update.effective_message.reply_text(msg, parse_mode=ParseMode.HTML)
+        await send_html_message(update, msg)
         return
 
     # 4. Pilih berdasarkan nomor urut (misal /session 1, /session 2)
@@ -519,18 +567,17 @@ async def session_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if 0 <= idx < len(recent):
             target_session = recent[idx]
         else:
-            await update.effective_message.reply_text(
-                f"Nomor sesi <code>{sub_arg}</code> tidak valid. Ketik <code>/session</code> untuk melihat daftar nomor yang tersedia.",
-                parse_mode=ParseMode.HTML
+            await send_html_message(
+                update,
+                f"Nomor sesi <code>{sub_arg}</code> tidak valid. Ketik <code>/session</code> untuk melihat nomor yang tersedia."
             )
             return
     else:
-        # Cari berdasarkan ID / prefix
         target_session = get_conversation_by_id_or_prefix(sub_arg)
         if not target_session:
-            await update.effective_message.reply_text(
-                f"Sesi dengan ID/awalan <code>{html.escape(sub_arg)}</code> tidak ditemukan di riwayat Antigravity.",
-                parse_mode=ParseMode.HTML
+            await send_html_message(
+                update,
+                f"Sesi dengan ID/awalan <code>{html.escape(sub_arg)}</code> tidak ditemukan di riwayat Antigravity."
             )
             return
 
@@ -540,7 +587,7 @@ async def session_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     config["active_conversation_id"] = chosen_id
     RESET_NEXT_SESSION = False
 
-    # Jika sesi target memiliki path proyek yang valid di PC, tawarkan / alihkan workspace
+    # Jika sesi target memiliki path proyek yang valid di PC, alihkan workspace
     ws_switched_msg = ""
     target_ws = target_session.get("workspace_path")
     if target_ws and Path(target_ws).exists() and Path(target_ws).is_dir():
@@ -557,9 +604,10 @@ async def session_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"• <b>ID:</b> <code>{chosen_id}</code>\n"
         f"• <b>Proyek:</b> <code>{target_session['workspace'] or 'Umum'}</code>"
         f"{ws_switched_msg}\n\n"
+        f"<b>Pesan Awal Sesi:</b>\n<i>\"{html.escape(target_session['first_prompt'][:120])}\"</i>\n\n"
         "Pesan atau perintah Anda berikutnya (/plan, /goal, chat) akan melanjutkan konteks dari sesi ini."
     )
-    await update.effective_message.reply_text(reply, parse_mode=ParseMode.HTML)
+    await send_html_message(update, reply)
 
 async def stop_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global ACTIVE_PROCESS
@@ -573,14 +621,11 @@ async def stop_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if ACTIVE_PROCESS.poll() is None:
                 ACTIVE_PROCESS.kill()
             ACTIVE_PROCESS = None
-            await update.effective_message.reply_text(
-                "<b>Proses Antigravity Berhasil Dihentikan.</b>",
-                parse_mode=ParseMode.HTML,
-            )
+            await send_html_message(update, "<b>Proses Antigravity Berhasil Dihentikan.</b>")
         except Exception as e:
             await update.effective_message.reply_text(f"Gagal menghentikan proses: {html.escape(str(e))}")
     else:
-        await update.effective_message.reply_text("Tidak ada proses Antigravity yang sedang berjalan saat ini.")
+        await send_html_message(update, "Tidak ada proses Antigravity yang sedang berjalan saat ini.")
 
 async def screenshot_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_auth(update):
@@ -597,10 +642,10 @@ async def screenshot_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if proc.returncode != 0 or not proc.stdout:
             err = proc.stderr.decode("utf-8", errors="ignore")
-            await update.effective_message.reply_text(
+            await send_html_message(
+                update,
                 f"<b>Gagal mengambil tangkapan layar emulator:</b>\n<code>{html.escape(err or 'Device offline')}</code>\n\n"
-                "Pastikan emulator sudah berjalan di PC:\n<code>flutter emulators --launch Medium_Phone</code>",
-                parse_mode=ParseMode.HTML,
+                "Pastikan emulator sudah berjalan di PC:\n<code>flutter emulators --launch Medium_Phone</code>"
             )
             return
 
@@ -614,15 +659,15 @@ async def screenshot_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.HTML,
         )
     except subprocess.TimeoutExpired:
-        await update.effective_message.reply_text("Timeout: ADB tidak merespons dalam 10 detik.")
+        await send_html_message(update, "Timeout: ADB tidak merespons dalam 10 detik.")
     except Exception as e:
-        await update.effective_message.reply_text(f"Error screenshot: {html.escape(str(e))}")
+        await send_html_message(update, f"Error screenshot: {html.escape(str(e))}")
 
 async def analyze_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_auth(update):
         return
 
-    await update.effective_message.reply_text("Menjalankan <code>flutter analyze</code> di PC...", parse_mode=ParseMode.HTML)
+    await send_html_message(update, "Menjalankan <code>flutter analyze</code> di PC...")
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
 
     try:
@@ -639,11 +684,11 @@ async def analyze_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             out = "Tidak ada output dari flutter analyze."
 
         reply = f"<b>Hasil Flutter Analyze:</b>\n<pre><code>{html.escape(out)}</code></pre>"
-        await split_and_send(update, reply, parse_mode=ParseMode.HTML)
+        await send_html_message(update, reply)
     except subprocess.TimeoutExpired:
-        await update.effective_message.reply_text("Timeout: flutter analyze memakan waktu lebih dari 60 detik.")
+        await send_html_message(update, "Timeout: flutter analyze memakan waktu lebih dari 60 detik.")
     except Exception as e:
-        await update.effective_message.reply_text(f"Error flutter analyze: {html.escape(str(e))}")
+        await send_html_message(update, f"Error flutter analyze: {html.escape(str(e))}")
 
 async def git_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_auth(update):
@@ -668,25 +713,25 @@ async def git_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"• <b>Commit Terakhir:</b> <code>{last_commit}</code>\n\n"
             f"<b>Status Working Tree:</b>\n<pre><code>{html.escape(status)}</code></pre>"
         )
-        await update.effective_message.reply_text(reply, parse_mode=ParseMode.HTML)
+        await send_html_message(update, reply)
     except Exception as e:
-        await update.effective_message.reply_text(f"Error git: {html.escape(str(e))}")
+        await send_html_message(update, f"Error git: {html.escape(str(e))}")
 
 async def run_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_auth(update):
         return
 
     if not context.args:
-        await update.effective_message.reply_text(
-            "Format perintah salah.\nContoh: <code>/run git status</code> atau <code>/run dir</code>",
-            parse_mode=ParseMode.HTML,
+        await send_html_message(
+            update,
+            "Format perintah salah.\nContoh: <code>/run git status</code> atau <code>/run dir</code>"
         )
         return
 
     command_to_run = " ".join(context.args)
-    await update.effective_message.reply_text(
-        f"Menjalankan: <code>{html.escape(command_to_run)}</code>...",
-        parse_mode=ParseMode.HTML
+    await send_html_message(
+        update,
+        f"Menjalankan: <code>{html.escape(command_to_run)}</code>..."
     )
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
 
@@ -703,11 +748,11 @@ async def run_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             out = "[Perintah selesai tanpa output]"
 
         reply = f"<b>Output ({html.escape(command_to_run)}):</b>\n<pre><code>{html.escape(out)}</code></pre>"
-        await split_and_send(update, reply, parse_mode=ParseMode.HTML)
+        await send_html_message(update, reply)
     except subprocess.TimeoutExpired:
-        await update.effective_message.reply_text("Timeout: Perintah melebihi batas 30 detik.")
+        await send_html_message(update, "Timeout: Perintah melebihi batas 30 detik.")
     except Exception as e:
-        await update.effective_message.reply_text(f"Gagal menjalankan perintah: {html.escape(str(e))}")
+        await send_html_message(update, f"Gagal menjalankan perintah: {html.escape(str(e))}")
 
 async def project_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global RESET_NEXT_SESSION
@@ -738,7 +783,7 @@ async def project_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Contoh:\n<code>/project deposito</code>\n\n"
             "Atau gunakan path absolut di PC Anda:\n<code>/project D:\\Workspace\\proyek_baru</code>"
         )
-        await update.effective_message.reply_text(reply, parse_mode=ParseMode.HTML)
+        await send_html_message(update, reply)
         return
 
     target_input = " ".join(context.args).strip().strip('"').strip("'")
@@ -755,10 +800,10 @@ async def project_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             target_path = candidate_abs
 
     if not target_path:
-        await update.effective_message.reply_text(
+        await send_html_message(
+            update,
             f"<b>Folder Proyek Tidak Ditemukan:</b>\n<code>{html.escape(target_input)}</code>\n\n"
-            f"Pastikan nama folder ada di <code>{STUDIO_PROJECTS_DIR}</code> atau gunakan path lengkap yang valid.",
-            parse_mode=ParseMode.HTML
+            f"Pastikan nama folder ada di <code>{STUDIO_PROJECTS_DIR}</code> atau gunakan path lengkap yang valid."
         )
         return
 
@@ -770,13 +815,13 @@ async def project_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Reset Antigravity session so context is not mixed between projects
     RESET_NEXT_SESSION = True
 
-    await update.effective_message.reply_text(
+    await send_html_message(
+        update,
         "<b>Berhasil Berpindah Proyek.</b>\n\n"
         f"• <b>Nama Proyek:</b> <code>{target_path.name}</code>\n"
         f"• <b>Lokasi:</b> <code>{target_path.resolve()}</code>\n\n"
         "Sesi Antigravity di-reset agar bersih. "
-        "Semua perintah (/goal, /plan, /git, /analyze, chat) sekarang memproses proyek ini.",
-        parse_mode=ParseMode.HTML
+        "Semua perintah (/goal, /plan, /git, /analyze, chat) sekarang memproses proyek ini."
     )
 
 async def model_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -796,17 +841,17 @@ async def model_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Ketik: <code>/model &lt;nama_model&gt;</code>\n"
             "Contoh:\n<code>/model claude-sonnet-4-6</code>\natau\n<code>/model gemini-3.8-flash-high</code>"
         )
-        await update.effective_message.reply_text(reply, parse_mode=ParseMode.HTML)
+        await send_html_message(update, reply)
         return
 
     new_model = context.args[0].strip()
     config["model"] = new_model
     try:
         save_config(config)
-        await update.effective_message.reply_text(
+        await send_html_message(
+            update,
             f"<b>Model Antigravity Berhasil Diubah.</b>\n\nModel aktif sekarang: <code>{new_model}</code>\n"
-            "Antigravity CLI akan menggunakan model ini untuk instruksi selanjutnya.",
-            parse_mode=ParseMode.HTML
+            "Antigravity CLI akan menggunakan model ini untuk instruksi selanjutnya."
         )
     except Exception as e:
         await update.effective_message.reply_text(f"Gagal menyimpan model baru: {html.escape(str(e))}")
@@ -819,9 +864,9 @@ async def new_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     config = load_config()
     config["active_conversation_id"] = ""
     save_config(config)
-    await update.effective_message.reply_text(
-        "<b>Sesi Antigravity Direset.</b>\nPesan Anda berikutnya akan memulai percakapan baru dari awal.",
-        parse_mode=ParseMode.HTML
+    await send_html_message(
+        update,
+        "<b>Sesi Antigravity Direset.</b>\nPesan Anda berikutnya akan memulai percakapan baru dari awal."
     )
 
 # ==================== MESSAGE & EXECUTION HANDLER ====================
@@ -837,17 +882,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Check if a process is already actively running
     if ACTIVE_PROCESS and ACTIVE_PROCESS.poll() is None:
-        await update.effective_message.reply_text(
+        await send_html_message(
+            update,
             "<b>Antigravity sedang mengerjakan tugas sebelumnya.</b>\n\n"
-            "Tunggu tugas selesai atau ketik <code>/stop</code> untuk membatalkannya terlebih dahulu.",
-            parse_mode=ParseMode.HTML
+            "Tunggu tugas selesai atau ketik <code>/stop</code> untuk membatalkannya terlebih dahulu."
         )
         return
 
     if not Path(AGY_EXE).exists():
-        await update.effective_message.reply_text(
-            f"Executable Antigravity (<code>agy.exe</code>) tidak ditemukan di:\n<code>{AGY_EXE}</code>",
-            parse_mode=ParseMode.HTML,
+        await send_html_message(
+            update,
+            f"Executable Antigravity (<code>agy.exe</code>) tidak ditemukan di:\n<code>{AGY_EXE}</code>"
         )
         return
 
@@ -857,12 +902,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # /plan
     if user_text.lower() == "/plan":
-        await update.effective_message.reply_text(
+        await send_html_message(
+            update,
             "<b>Mode /plan Antigravity</b>\n\n"
             "Mode ini menyusun rencana aksi bertahap sebelum eksekusi kode.\n\n"
             "<b>Cara Penggunaan:</b>\n"
-            "Ketik: <code>/plan &lt;tugas&gt;</code>\nContoh: <code>/plan buatkan alur checkout tagihan</code>",
-            parse_mode=ParseMode.HTML
+            "Ketik: <code>/plan &lt;tugas&gt;</code>\nContoh: <code>/plan buatkan alur checkout tagihan</code>"
         )
         return
     elif user_text.lower().startswith("/plan "):
@@ -874,12 +919,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # /goal
     elif user_text.lower() == "/goal":
-        await update.effective_message.reply_text(
+        await send_html_message(
+            update,
             "<b>Mode /goal Antigravity</b>\n\n"
             "Mode ini mengeksekusi instruksi secara otonom tuntas dari awal sampai akhir.\n\n"
             "<b>Cara Penggunaan:</b>\n"
-            "Ketik: <code>/goal &lt;tujuan&gt;</code>\nContoh: <code>/goal selesaikan implementasi riwayat tagihan</code>",
-            parse_mode=ParseMode.HTML
+            "Ketik: <code>/goal &lt;tujuan&gt;</code>\nContoh: <code>/goal selesaikan implementasi riwayat tagihan</code>"
         )
         return
     elif user_text.lower().startswith("/goal "):
@@ -1021,7 +1066,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         active_cid = new_cid
                         config["active_conversation_id"] = new_cid
                         save_config(config)
-                        # Cari judul jika ada
                         sess_meta = get_conversation_by_id_or_prefix(new_cid)
                         if sess_meta:
                             session_title = sess_meta["title"]
@@ -1124,7 +1168,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             final_response = "Tugas telah selesai dieksekusi oleh Antigravity."
 
         full_output = f"{final_response.strip()}{summary_section}"
-        await split_and_send(update, full_output, parse_mode=ParseMode.HTML)
+        await send_markdown_message(update, full_output)
 
     except Exception as e:
         logger.error(f"Error in stream processing: {e}", exc_info=True)
