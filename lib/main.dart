@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -9,8 +8,7 @@ import 'router.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  if (!kIsWeb) {
-    try {
+  try {
       if (Firebase.apps.isEmpty) {
         await Firebase.initializeApp(
           options: DefaultFirebaseOptions.currentPlatform,
@@ -19,7 +17,6 @@ void main() async {
     } catch (e) {
       debugPrint('[Firebase] Initialization notice: $e');
     }
-  }
   runApp(const ProviderScope(child: MyApp()));
 }
 

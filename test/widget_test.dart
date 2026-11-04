@@ -86,7 +86,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('History'), findsOneWidget);
-    expect(find.text('hhhhhhhhhhhhhhistory'), findsOneWidget);
+    expect(find.text('Pantau riwayat pesanan dan status pembayaran'), findsOneWidget);
     expect(find.text('All'), findsOneWidget);
     expect(find.text('Paid'), findsOneWidget);
     expect(find.text('Unpaid'), findsOneWidget);

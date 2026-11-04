@@ -8,7 +8,7 @@
 - Order: Urutan mengikuti Figma: Select Days â†’ Order Summary â†’ Payment Method. Semua kartu hari tetap dapat dipilih, dengan state selected, ringkasan, dan pilihan pembayaran.
 - Checkout: Header TOTAL BILL, kartu QRIS/Virtual Account/E-Wallet dengan state selected, total, dan CTA footer mengikuti design context Figma.
 - History: Header, ikon receipt, judul/total terpusat, filter Semua/Sudah Lunas/Belum Lunas, badge status ikon berwarna, baris detail peach, dan CTA Bayar Sekarang diselaraskan ke screenshot referensi.
-- Profile: Avatar placeholder dibingkai sesuai radius desain; tile menu, warna ikon, subtitle, dan posisi logout diselaraskan.
+- Profile: PFP interaktif dengan floating badge kamera, bottom sheet modal foto (kamera, galeri, hapus foto via Firebase Storage), kartu data profil siswa unlocked (edit nama, dropdown kelas, dropdown jurusan, nomor telepon), modal sheet ubah username dengan live check ketersediaan unik, modal sheet ubah password 3-field (password lama, baru, konfirmasi) dengan eye toggle, dan dialog konfirmasi logout.
 - Bottom Navigation: Tinggi 64 px, diletakkan di tengah dengan lebar maksimum, ikon dan label tetap sejajar serta state aktif maroon.
 - Login/Register: Teks tab terpilih putih; dropdown kelas/jurusan menggunakan dekorasi underline transparan yang sama dengan text field. Logo dipusatkan eksplisit.
 

@@ -2,7 +2,11 @@ import 'dart:io' show File;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+
+final imageUploadServiceProvider =
+    Provider<ImageUploadService>((ref) => ImageUploadService());
 
 class ImageUploadService {
   final ImagePicker _picker = ImagePicker();
@@ -22,7 +26,7 @@ class ImageUploadService {
       if (uid == null) return null;
 
       final ref = _storage.ref().child('profile_photos/$uid.jpg');
-      
+
       if (kIsWeb) {
         final bytes = await picked.readAsBytes();
         await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
@@ -30,11 +34,22 @@ class ImageUploadService {
         // Pada mobile, gunakan putFile untuk efisiensi
         await ref.putFile(File(picked.path), SettableMetadata(contentType: 'image/jpeg'));
       }
-      
+
       return await ref.getDownloadURL();
     } catch (e) {
       debugPrint('[ImageUploadService] error: $e');
       return null;
+    }
+  }
+
+  Future<bool> deleteProfilePhoto(String uid) async {
+    try {
+      final ref = _storage.ref().child('profile_photos/$uid.jpg');
+      await ref.delete();
+      return true;
+    } catch (e) {
+      debugPrint('[ImageUploadService] delete error: $e');
+      return false;
     }
   }
 }

@@ -99,10 +99,12 @@ class _AuthPageState extends ConsumerState<AuthPage> {
       final username = _usernameController.text.trim();
       final password = _passwordController.text;
 
-      // Izinkan langsung login jika kosong di mode demo/test
+      // Izinkan langsung login jika kosong hanya di mode offline/test
       if (username.isEmpty && password.isEmpty) {
-        context.go('/home');
-        return;
+        if (!authService.isFirebaseAvailable) {
+          context.go('/home');
+          return;
+        }
       }
 
       if (username.isEmpty || password.isEmpty) {
@@ -131,6 +133,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
 
   @override
   Widget build(BuildContext context) {
+    final authService = ref.watch(authServiceProvider);
     final isCompact = MediaQuery.sizeOf(context).height < 760;
     final buttonLabel = _registering ? 'Daftar' : 'Sign In';
 
@@ -270,7 +273,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Tampilan demo • belum terhubung ke backend',
+                    authService.isFirebaseAvailable ? 'Dian Catering • Layanan Katering Siswa' : 'Tampilan offline • mode pengujian',
                     style: AppTextStyles.caption.copyWith(fontSize: 10),
                     textAlign: TextAlign.center,
                   ),

@@ -155,4 +155,55 @@ class AuthService {
     final credential = EmailAuthProvider.credential(email: email, password: password);
     await user.reauthenticateWithCredential(credential);
   }
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    if (newPassword.length < 6) {
+      throw Exception('Password baru minimal 6 karakter.');
+    }
+
+    if (newPassword != confirmPassword) {
+      throw Exception('Konfirmasi password baru tidak cocok.');
+    }
+
+    if (currentPassword == newPassword) {
+      throw Exception('Password baru tidak boleh sama dengan password saat ini.');
+    }
+
+    if (!isFirebaseAvailable) {
+      debugPrint('[AuthService] Firebase offline: password change simulated');
+      return;
+    }
+
+    // 1. Re-autentikasi dengan password saat ini
+    try {
+      await reauthenticate(currentPassword);
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        throw Exception('Password lama yang Anda masukkan salah.');
+      }
+      throw Exception('Verifikasi password lama gagal: ${e.message ?? e.code}');
+    }
+
+    // 2. Simpan password baru
+    try {
+      await updatePassword(newPassword);
+    } on FirebaseAuthException catch (e) {
+      throw Exception('Gagal menyimpan password baru: ${e.message ?? e.code}');
+    }
+  }
+
+  Future<void> updateVirtualEmail(String newUsername) async {
+    if (!isFirebaseAvailable) return;
+    final user = _auth.currentUser;
+    if (user == null) return;
+    final newEmail = maskUsernameToEmail(newUsername);
+    try {
+      await user.verifyBeforeUpdateEmail(newEmail);
+    } catch (e) {
+      debugPrint('[AuthService] updateVirtualEmail notice: $e');
+    }
+  }
 }

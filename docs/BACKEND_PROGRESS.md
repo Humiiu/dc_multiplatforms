@@ -80,3 +80,7 @@ Verifikasi: `flutter analyze` bersih (0 issues), `flutter test` lulus (45 tests 
 ### 06. Implementasi Fitur 6: Riwayat Pesanan Realtime & Security Rules Hardening (02 Nov 2026)
 Task: Menyambungkan `HistoryPage` ke `userOrdersStreamProvider` untuk menampilkan pesanan siswa secara real-time dari Firebase RTDB, mengaktifkan filter status pembayaran ('All', 'Paid', 'Unpaid'), menghubungkan konfirmasi WA admin dinamis untuk pesanan hutang, menambahkan `RefreshIndicator`, memperbarui `database.rules.json` untuk node `debts` dan `user_orders`, serta menambahkan unit test model Order di `test/order_model_test.dart`.
 Verifikasi: `flutter analyze` bersih (0 issues), `flutter test` lulus (50 tests passed).
+
+### 07. Pengaktifan Firebase Realtime Database Penuh & Fitur Profil Lengkap (05 Nov 2026)
+Task: Memulihkan konfigurasi piKey Firebase pada irebase_options.dart & inisialisasi di semua platform, menghapus bypass demo login form kosong pada AuthPage, menambahkan fungsi changePassword (dengan reautentikasi password lama & validasi 3-field), changeUsername dengan lookup unik di RTDB, updateStudentProfile (unlocked: nama, kelas, jurusan, telepon), serta manajemen PFP di ImageUploadService dan RTDB (kamera langsung, galeri, hapus foto profil).
+Verifikasi: lutter analyze 0 issues, lutter test lulus (54 tests passed).

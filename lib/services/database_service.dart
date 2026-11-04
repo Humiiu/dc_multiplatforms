@@ -46,6 +46,58 @@ class DatabaseService {
     }
   }
 
+  /// Ubah username siswa secara atomik (update node /users/`uid`, buat index /usernames/`new`, hapus index /usernames/`old`)
+  Future<void> changeUsername(String uid, String oldUsername, String newUsername) async {
+    final cleanOld = oldUsername.trim().toLowerCase();
+    final cleanNew = newUsername.trim().toLowerCase();
+
+    if (cleanNew.length < 3) {
+      throw Exception('Username minimal 3 karakter.');
+    }
+
+    if (cleanNew == cleanOld) return;
+
+    final taken = await isUsernameTaken(cleanNew);
+    if (taken) {
+      throw Exception('Username "$cleanNew" sudah digunakan. Pilih username lain.');
+    }
+
+    final updates = <String, dynamic>{
+      'users/$uid/username': cleanNew,
+      'usernames/$cleanNew': {'uid': uid},
+      if (cleanOld.isNotEmpty) 'usernames/$cleanOld': null,
+    };
+
+    await _root.update(updates);
+  }
+
+  /// Update data profil siswa (nama, kelas, jurusan, nomor HP)
+  Future<void> updateStudentProfile(
+    String uid, {
+    required String name,
+    required String kelas,
+    required String jurusan,
+    String? phone,
+  }) async {
+    final updates = <String, dynamic>{
+      'name': name.trim(),
+      'kelas': kelas.trim(),
+      'jurusan': jurusan.trim(),
+      if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
+    };
+    await _root.child('users').child(uid).update(updates);
+  }
+
+  /// Update / set photoUrl profil user
+  Future<void> setProfilePhoto(String uid, String photoUrl) async {
+    await _root.child('users').child(uid).update({'photoUrl': photoUrl});
+  }
+
+  /// Hapus foto profil user dari database
+  Future<void> removeProfilePhoto(String uid) async {
+    await _root.child('users').child(uid).update({'photoUrl': null});
+  }
+
   /// Check if username is already taken (via lookup index)
   Future<bool> isUsernameTaken(String username) async {
     try {

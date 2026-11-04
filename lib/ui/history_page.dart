@@ -97,7 +97,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
               ),
               const SizedBox(height: 4),
               Text(
-                'hhhhhhhhhhhhhhistory',
+                'Pantau riwayat pesanan dan status pembayaran',
                 style: AppTextStyles.bodySmall.copyWith(
                   color: AppColors.textSecondary,
                 ),
